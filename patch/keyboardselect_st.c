@@ -1,4 +1,13 @@
 #include <wctype.h>
+#include <string.h>
+#include <unistd.h>
+#include <wchar.h>
+#include <string.h>
+#include <locale.h>
+
+#define PCRE2_CODE_UNIT_WIDTH 32
+#include <pcre2.h>
+
 
 enum keyboardselect_mode {
 	KBDS_MODE_MOVE    = 0,
@@ -7,6 +16,8 @@ enum keyboardselect_mode {
 	KBDS_MODE_FIND    = 1<<3,
 	KBDS_MODE_SEARCH  = 1<<4,
 	KBDS_MODE_FLASH   = 1<<5,
+	KBDS_MODE_REGEX   = 1<<6,
+	KBDS_MODE_URL   = 1<<7,
 };
 
 enum cursor_wrap {
@@ -21,6 +32,38 @@ typedef struct {
 	Line line;
 	int len;
 } KCursor;
+
+typedef struct {
+	unsigned int start;
+	unsigned int len;
+	unsigned int miss;
+	char * pattern;
+	wchar_t * matched_substring;
+} RegexResult;
+
+typedef struct {
+	KCursor c;
+	unsigned int len;
+	char * pattern;
+	wchar_t * matched_substring;
+} RegexKCursor;
+
+typedef struct {
+    RegexKCursor *array;
+    size_t used;
+    size_t size;   
+} RegexKCursorArray;
+
+typedef struct {
+	KCursor c;
+	char *url;
+} UrlKCursor;
+
+typedef struct {
+    UrlKCursor *array;
+    size_t used;
+    size_t size;   
+} UrlKCursorArray;
 
 struct {
 	int cx;
@@ -53,8 +96,10 @@ static Rune kbds_findchar;
 static KCursor kbds_c, kbds_oc;
 static CharArray flash_next_char_record, flash_used_label;
 static KCursorArray flash_kcursor_record;
+static RegexKCursorArray regex_kcursor_record;
+static UrlKCursorArray url_kcursor_record;
 
-static const char *flash_key_label[52] = {
+static const char *flash_key_label[] = {
 	"j", "f", "d", "k", "l", "h", "g", "a", "s", "o",
 	"i", "e", "u", "n", "c", "m", "r", "p", "b", "t",
 	"w", "v", "x", "y", "q", "z",
@@ -62,6 +107,104 @@ static const char *flash_key_label[52] = {
 	"G", "Q", "R", "T", "U", "V", "W", "X", "Z", "C",
 	"K", "M", "N", "O", "P", "S"
 };
+
+static const char *valid_char[] = {
+	"0","1","2","3","4","5","6","7","8","9",
+    "j", "f", "d", "k", "l", "h", "g", "a", "s", "o", 
+    "i", "e", "u", "n", "c", "m", "r", "p", "b", "t", 
+    "w", "v", "x", "y", "q", "z",
+    "I", "J", "L", "H", "A", "B", "Y", "D", "E", "F", 
+    "G", "Q", "R", "T", "U", "V", "W", "X", "Z", "C",
+    "K", "M", "N", "O", "P", "S",
+    ".", "/", "#", 
+    "-", "_", "=", "+", "(", ")", "@", "!", "$", "&", "*",
+    "[", "]", "{", "}", "|", "\\", ":", ";", "\"", "'",
+    "<", ">", ",", "?", "`", "~" 
+};
+
+int is_chinese_character(wchar_t ch) {
+    // check if the character is a Chinese character
+    if ((ch >= 0x4E00 && ch <= 0x9FFF) || 
+        (ch >= 0x3400 && ch <= 0x4DBF) || 
+        (ch >= 0x20000 && ch <= 0x2A6DF) ||
+        (ch >= 0x2A700 && ch <= 0x2B73F) ||
+        (ch >= 0x2B740 && ch <= 0x2B81F) ||
+        (ch >= 0x2B820 && ch <= 0x2CEAF) ||
+        (ch >= 0x2CEB0 && ch <= 0x2EBEF) ||
+        (ch >= 0x30000 && ch <= 0x3134F)) {
+        return 1; 
+		}
+    return 0;
+}
+
+int
+is_valid_head_char(Rune u) {
+	int i;
+	for ( i = 0; i < LEN(valid_char); i++) {
+		if (u == *valid_char[i]) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+void
+init_url_kcursor_array(UrlKCursorArray *a, size_t initialSize) {
+    a->array = (UrlKCursor *)xmalloc(initialSize * sizeof(UrlKCursor));
+    a->used = 0;
+    a->size = initialSize;
+}
+
+void
+insert_url_kcursor_array(UrlKCursorArray *a, UrlKCursor element) {
+    if (a->used == a->size) {
+        size_t newSize = a->size == 0 ? 1 : a->size * 2;
+        UrlKCursor *newArray = (UrlKCursor *)xrealloc(a->array, newSize * sizeof(UrlKCursor));
+        a->array = newArray;
+        a->size = newSize;
+    }
+    a->array[a->used++] = element;
+}
+
+void
+reset_url_kcursor_array(UrlKCursorArray *a) {
+	for (int i = 0; i < a->used; i++) {
+		XFree(a->array[i].url);
+	}
+    XFree(a->array);
+    a->array = NULL;
+    a->used = 0;
+    a->size = 0;
+}
+
+void
+init_regex_kcursor_array(RegexKCursorArray *a, size_t initialSize) {
+    a->array = (RegexKCursor *)xmalloc(initialSize * sizeof(RegexKCursor));
+    a->used = 0;
+    a->size = initialSize;
+}
+
+void
+insert_regex_kcursor_array(RegexKCursorArray *a, RegexKCursor element) {
+    if (a->used == a->size) {
+        size_t newSize = a->size == 0 ? 1 : a->size * 2;
+        RegexKCursor *newArray = (RegexKCursor *)xrealloc(a->array, newSize * sizeof(RegexKCursor));
+        a->array = newArray;
+        a->size = newSize;
+    }
+    a->array[a->used++] = element;
+}
+
+void
+reset_regex_kcursor_array(RegexKCursorArray *a) {
+	for (int i = 0; i < regex_kcursor_record.used; i++) {
+		XFree(regex_kcursor_record.array[i].matched_substring);
+	}
+    XFree(a->array);
+    a->array = NULL;
+    a->used = 0;
+    a->size = 0;
+}
 
 void
 init_char_array(CharArray *a, size_t initialSize) {
@@ -81,7 +224,7 @@ insert_char_array(CharArray *a, Rune element) {
 
 void
 reset_char_array(CharArray *a) {
-	free(a->array);
+	XFree(a->array);
 	a->array = NULL;
 	a->used = 0;
 	a->size = 0;
@@ -107,7 +250,7 @@ insert_kcursor_array(KCursorArray *a, KCursor element) {
 
 void
 reset_kcursor_array(KCursorArray *a) {
-	free(a->array);
+	XFree(a->array);
 	a->array = NULL;
 	a->used = 0;
 	a->size = 0;
@@ -138,8 +281,11 @@ is_in_flash_next_char_record(Rune label) {
 void
 kbds_drawstatusbar(int y)
 {
-	static char *modes[] = { " MOVE ", "", " SELECT ", " RSELECT ", " LSELECT ",
-	                         " SEARCH FW ", " SEARCH BW ", " FIND FW ", " FIND BW ", " FLASH " };
+	static char *modes[] = { 
+		" MOVE ", "", " SELECT ", " RSELECT ", " LSELECT ",
+		" SEARCH FW ", " SEARCH BW ", " FIND FW ", " FIND BW ",
+		" FLASH ", " REGEX ", "  URL "
+	};
 	static char quant[20] = { ' ' };
 	static Glyph g;
 	int i, n, m;
@@ -154,7 +300,11 @@ kbds_drawstatusbar(int y)
 
 	/* draw the mode */
 	if (y == 0) {
-		if (kbds_isflashmode())
+		if (kbds_isurlmode())
+			m = 11;
+		else if (kbds_isregexmode())
+			m = 10;
+		else if (kbds_isflashmode())
 			m = 9;
 		else if (kbds_issearchmode())
 			m = 5 + (kbds_searchobj.dir < 0 ? 1 : 0);
@@ -327,6 +477,18 @@ int
 kbds_isflashmode(void)
 {
 	return kbds_in_use && (kbds_mode & KBDS_MODE_FLASH);
+}
+
+int
+kbds_isregexmode(void)
+{
+	return kbds_in_use && (kbds_mode & KBDS_MODE_REGEX);
+}
+
+int
+kbds_isurlmode(void)
+{
+	return kbds_in_use && (kbds_mode & KBDS_MODE_URL);
 }
 
 void
@@ -580,11 +742,346 @@ kbds_searchall(void)
 	return count;
 }
 
+RegexResult get_position_from_regex(char *pattern_mb, unsigned int *wstr) {
+    RegexResult result;
+    result.matched_substring = NULL;
+
+	setlocale(LC_ALL, "");
+
+    // check if the pattern contains any subpatterns
+    int num_subpatterns = 0;
+    for (int i = 0; pattern_mb[i] != '\0'; ++i) {
+        if (pattern_mb[i] == '(') {
+            num_subpatterns++;
+        }
+    }
+
+    // if there are no subpatterns, exit with an error
+    if (num_subpatterns == 0) {
+        result.miss = 1;
+        printf("No subpatterns found in pattern: %s\n", pattern_mb);
+        return result;
+    }
+
+     // turn the pattern into wide character string
+    size_t pattern_len = mbstowcs(NULL, pattern_mb, 0) + 1;
+    wchar_t *pattern = xmalloc(pattern_len * sizeof(wchar_t));
+
+    mbstowcs(pattern, pattern_mb, pattern_len);
+
+    // turn the pattern into PCRE2_UCHAR32
+    PCRE2_UCHAR32 *wpattern = xmalloc(pattern_len * sizeof(PCRE2_UCHAR32));
+
+    for (size_t i = 0; i < pattern_len; i++) {
+        wpattern[i] = (PCRE2_UCHAR32)pattern[i];
+    }
+
+    // create the regex object
+    int errorcode;
+    PCRE2_SIZE erroffset;
+    pcre2_code *re = pcre2_compile(wpattern, PCRE2_ZERO_TERMINATED, 0, &errorcode, &erroffset, NULL);
+    XFree(pattern);
+    XFree(wpattern);
+    if (!re) {
+        PCRE2_UCHAR buffer[256];
+        pcre2_get_error_message(errorcode, buffer, sizeof(buffer));
+        fprintf(stderr, "PCRE2 compilation failed at offset %zu: %s\n", erroffset, buffer);
+        result.miss = 1;
+		return result;
+    }
+
+    // turn the text into PCRE2_UCHAR32
+    size_t len = wcslen(wstr);
+    PCRE2_UCHAR32 *wtext = xmalloc((len + 1) * sizeof(PCRE2_UCHAR32));
+
+    for (size_t i = 0; i < len; i++) {
+        wtext[i] = (PCRE2_UCHAR32)wstr[i];
+    }
+    wtext[len] = 0; 
+
+    pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(re, NULL);
+    int ret = pcre2_match(re, wtext, len, 0, 0, match_data, NULL);
+    if (ret >= 0) {
+        PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+        result.start = ovector[2];
+        result.len = ovector[3] - ovector[2];
+		result.miss = 0;
+		result.pattern = pattern_mb;
+
+        // get the matched string
+        wchar_t *match_str = xmalloc((result.len + 1) * sizeof(wchar_t));
+
+        wcsncpy(match_str, wstr + result.start, result.len);
+        match_str[result.len] = L'\0'; 
+		result.matched_substring = match_str;
+    } else if (ret == PCRE2_ERROR_NOMATCH) {
+		result.miss = 1;
+    } else {
+		result.miss = 1;
+    }
+
+    // free the regex object and the converted string
+    pcre2_match_data_free(match_data);
+    pcre2_code_free(re);
+    XFree(wtext);
+    return result;
+}
+
+int
+kbds_ismatch_regex(KCursor c,unsigned int head)
+{
+	KCursor m = c;
+	Rune *target_str;
+	RegexResult result;
+	RegexKCursor regex_kcursor;
+	unsigned int is_exists = 0;
+	unsigned int h,i,j,k;
+	unsigned int target_len =0;
+	char *pattern;
+
+	for (h=0; pattern_list[h] != NULL; h++) {
+		pattern = pattern_list[h];
+		target_len = m.len - head;
+		target_str = xmalloc((target_len + 1) * sizeof(Rune));
+		target_str[target_len] = L'\0';
+
+		for (size_t j = 0; j < target_len; j++) {
+    		target_str[j] = c.line[head + j].u;
+    	}
+
+		result = get_position_from_regex(pattern, target_str);
+		if(result.miss == 0) {
+			m.x = head + result.start;
+			regex_kcursor.c = m;
+			regex_kcursor.len = result.len;
+			regex_kcursor.pattern = result.pattern;
+			regex_kcursor.matched_substring = result.matched_substring;
+			regex_kcursor.c.line[regex_kcursor.c.x].ubk = regex_kcursor.c.line[regex_kcursor.c.x].u;
+			insert_regex_kcursor_array(&regex_kcursor_record, regex_kcursor);		
+		} 
+
+		XFree(target_str);
+	}
+}
+
+int
+kbds_search_regex(void)
+{
+	KCursor c;
+	unsigned int head,bottom,target_len,i,j;
+	Rune *target_str;
+	int head_hit = 0;
+	int bottom_hit = 0;
+	unsigned int is_exists_str;
+	unsigned int is_exists_str_index = 0;
+	unsigned int count = 0;
+
+	init_char_array(&flash_used_label, 1);
+	init_regex_kcursor_array(&regex_kcursor_record, 1);
+
+	for (c.y = 0; c.y <= term.row - 1; c.y++) {
+		c.line = TLINE(c.y);
+		c.len = tlinelen(c.line);
+		head_hit = 0;
+		bottom_hit = 0;
+		head = 0;
+		bottom = 0;
+		for (c.x = 0; c.x < c.len; c.x++) {
+			if(head_hit == 0 && bottom_hit == 0 && c.line[c.x].u != L' ') {
+				head = c.x;
+				head_hit = 1;
+			}
+
+			if(head_hit !=0 && c.line[c.x].u == L' ') {
+				bottom = c.x - 1;
+				bottom_hit = 1;
+			}
+
+			if(head_hit !=0 && c.x == c.len - 1) {
+				bottom = c.x;
+				bottom_hit = 1;
+			}
+
+			if (head_hit != 0 && bottom_hit != 0 && head != bottom) {
+				kbds_ismatch_regex(c,head);
+
+				head = 0;
+				bottom = 0;
+				head_hit = 0;
+				bottom_hit = 0;
+			}
+		}
+			
+	}
+
+	for ( i = 0; (count < LEN(flash_key_label)) && (i < regex_kcursor_record.used); i++) {
+		is_exists_str = 0;
+
+		if (i == 0) {
+			regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x].mode |= ATTR_FLASH_LABEL;
+			insert_char_array(&flash_used_label, *flash_key_label[count]);
+			regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x].u = *flash_key_label[count];
+			count++;
+			continue;		
+		}
+
+		for (int j = 0; j < i; j++) {
+			if(wcscmp(regex_kcursor_record.array[i].matched_substring,regex_kcursor_record.array[j].matched_substring) == 0) {
+				is_exists_str = 1;
+				is_exists_str_index = j;
+				break;
+			}
+		}
+
+		if (is_exists_str == 0) {
+			regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x].mode |= ATTR_FLASH_LABEL;
+			insert_char_array(&flash_used_label, *flash_key_label[count]);
+			regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x].u = *flash_key_label[count];
+			count++;
+		} else {
+			regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x].mode |= ATTR_FLASH_LABEL;
+			regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x].u = regex_kcursor_record.array[is_exists_str_index].c.line[regex_kcursor_record.array[is_exists_str_index].c.x].u;
+		}
+
+	}
+
+	for ( i = 0; i < regex_kcursor_record.used;i++) {
+		for ( j = 1; j < regex_kcursor_record.array[i].len; j++) {
+			regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x + j].mode |= ATTR_HIGHLIGHT;
+		}
+	}
+
+	tfulldirt();
+
+	return count;
+}
+
+void copy_regex_result(KCursor m, unsigned int len) {
+	char *dest = xmalloc((len+1) * sizeof(Rune));
+	char *dup;
+	int i;
+	for (i = 0; i < len; i++) {
+		if (i == 0)
+			dest[i] = m.line[m.x].ubk;
+		else
+			dest[i] = m.line[m.x+i].u;
+	}
+	dest[len] = L'\0';
+	dup = strdup(dest);
+	XFree(dest);
+
+	xsetsel(dup);
+}
+
+int
+kbds_search_url(void)
+{
+	KCursor c,m;
+	UrlKCursor url_kcursor;
+	unsigned int head,bottom,target_len,i,j,h;
+	unsigned int count = 0;
+	char *url;
+	int head_hit = 0;
+	int bottom_hit = 0;
+	int is_exists_url = 0;
+	int repeat_exists_url_index = 0;
+
+	init_char_array(&flash_used_label, 1);
+	init_url_kcursor_array(&url_kcursor_record, 1);
+
+	for (c.y = 0; c.y <= term.row - 1; c.y++) {
+		c.line = TLINE(c.y);
+		c.len = tlinelen(c.line);
+		head_hit = 0;
+		bottom_hit = 0;
+		head = 0;
+		bottom = 0;
+		for (c.x = 0; c.x < c.len; c.x++) {
+			if(head_hit == 0 && bottom_hit == 0 && c.line[c.x].u != L' ' && (is_valid_head_char(c.line[c.x].u) || is_chinese_character(c.line[c.x].u))) {
+				head = c.x;
+				head_hit = 1;
+			}
+
+			if(head_hit !=0 && c.line[c.x].u == L' ') {
+				bottom = c.x - 1;
+				bottom_hit = 1;
+			}
+
+			if(head_hit !=0 && c.x == c.len - 1) {
+				bottom = c.x;
+				bottom_hit = 1;
+			}
+
+			if (head_hit != 0 && bottom_hit != 0 && head != bottom) {
+				url = detecturl(head,c.y,1);
+				if (url != NULL && count < 52) {
+					is_exists_url = 0;
+					for (h = 0; h < url_kcursor_record.used; h++) {
+						if (strcmp(url_kcursor_record.array[h].url, url) == 0) {
+							is_exists_url = 1;
+							repeat_exists_url_index = h;
+							break;
+						}
+					}
+					m.x = head;
+					m.y = c.y;
+					m.line = TLINE(c.y);
+					m.len = tlinelen(m.line);
+					m.line[head].ubk |= m.line[head].u;
+					m.line[head].mode |= ATTR_FLASH_LABEL;
+					if (is_exists_url == 0) {
+						m.line[head].u = *flash_key_label[count];
+						insert_char_array(&flash_used_label, *flash_key_label[count]);
+						count++;
+					} else {
+						m.line[head].u = url_kcursor_record.array[repeat_exists_url_index].c.line[url_kcursor_record.array[repeat_exists_url_index].c.x].u;
+					}
+					url_kcursor.c = m;
+					url_kcursor.url = xmalloc((strlen(url) + 1)* sizeof(char));
+					url_kcursor.url = strdup(url);
+					insert_url_kcursor_array(&url_kcursor_record, url_kcursor);
+				}
+				head = 0;
+				bottom = 0;
+				head_hit = 0;
+				bottom_hit = 0;
+			}
+		}
+			
+	}
+
+	tfulldirt();
+
+	return count;
+}
+
 void
 jump_to_label(Rune label, int len) {
 	int i;
+	
+	if (kbds_isurlmode()) {
+		for ( i = 0; i < url_kcursor_record.used; i++) {
+			if (label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x].u) {
+				kbds_clearhighlights();
+				openUrlOnClick(url_kcursor_record.array[i].c.x, url_kcursor_record.array[i].c.y, url_opener);
+				return;
+			}
+		}		
+	}
+
+	if (kbds_isregexmode()) {
+		for ( i = 0; i < regex_kcursor_record.used; i++) {
+			if (label == regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x].u) {
+				kbds_clearhighlights();
+				copy_regex_result(regex_kcursor_record.array[i].c, regex_kcursor_record.array[i].len);
+				return;
+			}
+		}		
+	}
+
 	for ( i = 0; i < flash_kcursor_record.used; i++) {
 		if (label == flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].u) {
+			kbds_clearhighlights();
 			kbds_moveto(flash_kcursor_record.array[i].x-len, flash_kcursor_record.array[i].y);
 		}
 	}
@@ -595,6 +1092,18 @@ clear_flash_cache() {
 	reset_char_array(&flash_next_char_record);
 	reset_char_array(&flash_used_label);
 	reset_kcursor_array(&flash_kcursor_record);
+}
+
+void
+clear_regex_cache() {
+	reset_regex_kcursor_array(&regex_kcursor_record);
+	reset_char_array(&flash_used_label);
+}
+
+void
+clear_url_cache() {
+	reset_url_kcursor_array(&url_kcursor_record);
+	reset_char_array(&flash_used_label);
 }
 
 void
@@ -778,6 +1287,72 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 	char *url;
 	Line line;
 	Rune u;
+
+	if (kbds_isurlmode() && !forcequit) {
+		switch (ksym) {
+		case XK_Escape:
+			kbds_searchobj.len = 0;
+			kbds_setmode(kbds_mode & ~KBDS_MODE_URL);
+			clear_url_cache();
+			kbds_clearhighlights();
+			/* If the direct search is aborted, we just go to the next switch
+			 * statement and exit the keyboard selection mode immediately */
+			if (kbds_searchobj.directsearch)
+				break;
+			return 0;
+		default:
+			if (len > 0) {
+				utf8decode(buf, &u, len);
+				if (is_in_flash_used_label(u) == 1) {
+					jump_to_label(u, kbds_searchobj.len);
+					kbds_searchobj.len = 0;
+					kbds_setmode(kbds_mode & ~KBDS_MODE_URL);
+					clear_url_cache();
+					kbds_clearhighlights();
+					kbds_selecttext();
+					kbds_in_use = kbds_quant = 0;
+					XFree(kbds_searchobj.str);
+					return MODE_KBDSELECT;
+				} else {
+					return 0;
+				}
+			}
+			break;
+		}
+	}
+
+	if (kbds_isregexmode() && !forcequit) {
+		switch (ksym) {
+		case XK_Escape:
+			kbds_searchobj.len = 0;
+			kbds_setmode(kbds_mode & ~KBDS_MODE_REGEX);
+			clear_regex_cache();
+			kbds_clearhighlights();
+			/* If the direct search is aborted, we just go to the next switch
+			 * statement and exit the keyboard selection mode immediately */
+			if (kbds_searchobj.directsearch)
+				break;
+			return 0;
+		default:
+			if (len > 0) {
+				utf8decode(buf, &u, len);
+				if (is_in_flash_used_label(u) == 1) {
+					jump_to_label(u, kbds_searchobj.len);
+					kbds_searchobj.len = 0;
+					kbds_setmode(kbds_mode & ~KBDS_MODE_REGEX);
+					clear_regex_cache();
+					kbds_clearhighlights();
+					kbds_selecttext();
+					kbds_in_use = kbds_quant = 0;
+					XFree(kbds_searchobj.str);
+					return MODE_KBDSELECT;
+				} else {
+					return 0;
+				}
+			}
+			break;
+		}
+	}
 
 	if (kbds_isflashmode() && !forcequit) {
 		switch (ksym) {
@@ -967,11 +1542,11 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 			selextend(kbds_c.x, kbds_c.y, kbds_seltype, 0);
 		}
 		break;
-	case XK_o:
-	case XK_O:
+	case XK_p:
+	case XK_P:
 		ox = sel.ob.x; oy = sel.ob.y;
 		if (kbds_mode & KBDS_MODE_SELECT) {
-			if (kbds_seltype == SEL_RECTANGULAR && ksym == XK_O) {
+			if (kbds_seltype == SEL_RECTANGULAR && ksym == XK_P) {
 				selstart(kbds_c.x, oy, 0);
 				kbds_moveto(ox, kbds_c.y);
 			} else {
@@ -984,7 +1559,6 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 			kbds_moveto(kbds_c.x, oy);
 		}
 		break;
-	case XK_y:
 	case XK_Y:
 		if (kbds_isselectmode()) {
 			kbds_copytoclipboard();
@@ -1013,6 +1587,21 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 		kbds_setmode(kbds_mode | KBDS_MODE_FLASH);
 		kbds_clearhighlights();
 		return 0;
+	case XK_o:
+	case -5:
+		kbds_searchobj.directsearch = (ksym == -5);
+		kbds_searchobj.dir = 1;
+		kbds_setmode(kbds_mode | KBDS_MODE_REGEX);
+		kbds_clearhighlights();
+		kbds_search_regex();
+		return 0;
+	case -6:
+		kbds_searchobj.directsearch = (ksym == -6);
+		kbds_searchobj.dir = 1;
+		kbds_setmode(kbds_mode | KBDS_MODE_URL);
+		kbds_clearhighlights();
+		kbds_search_url();
+		return 0;
 	case XK_q:
 	case XK_Escape:
 		if (!kbds_in_use)
@@ -1028,11 +1617,12 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 		}
 		kbds_setmode(KBDS_MODE_MOVE);
 		/* FALLTHROUGH */
+	case XK_y:
 	case XK_Return:
 		if (kbds_isselectmode())
 			kbds_copytoclipboard();
 		kbds_in_use = kbds_quant = 0;
-		free(kbds_searchobj.str);
+		XFree(kbds_searchobj.str);
 		kscrolldown(&((Arg){ .i = term.histf }));
 		kbds_clearhighlights();
 		return MODE_KBDSELECT;
@@ -1076,20 +1666,19 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 		break;
 	case XK_Home:
 	case XK_KP_Home:
-	case XK_H:
+	case XK_B:
 		kbds_moveto(kbds_c.x, 0);
 		break;
 	case XK_M:
 		kbds_moveto(kbds_c.x, alt ? (term.row-1) / 2
-		                          : MIN(term.c.y + term.scr, term.row-1) / 2);
+                                  : MIN(term.c.y + term.scr, term.row-1) / 2);
 		break;
-	case XK_L:
+	case XK_E:
 		kbds_moveto(kbds_c.x, alt ? term.row-1
 		                          : MIN(term.c.y + term.scr, term.row-1));
 		break;
 	case XK_Page_Up:
 	case XK_KP_Page_Up:
-	case XK_K:
 		prevscr = term.scr;
 		kscrollup(&((Arg){ .i = term.row }));
 		kbds_moveto(kbds_c.x, alt ? 0
@@ -1097,7 +1686,8 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 		break;
 	case XK_Page_Down:
 	case XK_KP_Page_Down:
-	case XK_J:
+	case XK_d:
+	case XK_D:
 		prevscr = term.scr;
 		kscrolldown(&((Arg){ .i = term.row }));
 		kbds_moveto(kbds_c.x, alt ? term.row-1
@@ -1112,17 +1702,17 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 		kscrolldown(&((Arg){ .i = term.histf }));
 		kbds_moveto(kbds_c.x, alt ? term.row-1 : term.c.y);
 		break;
+	case XK_H:
 	case XK_b:
-	case XK_B:
-		kbds_nextword(1, -1, (ksym == XK_b) ? kbds_sdelim : kbds_ldelim);
+		kbds_nextword(1, -1, (ksym == XK_H) ? kbds_sdelim : kbds_ldelim);
 		break;
 	case XK_w:
 	case XK_W:
 		kbds_nextword(1, +1, (ksym == XK_w) ? kbds_sdelim : kbds_ldelim);
 		break;
+	case XK_L:
 	case XK_e:
-	case XK_E:
-		kbds_nextword(0, +1, (ksym == XK_e) ? kbds_sdelim : kbds_ldelim);
+		kbds_nextword(0, +1, (ksym == XK_L) ? kbds_sdelim : kbds_ldelim);
 		break;
 	case XK_z:
 		prevscr = term.scr;
@@ -1181,9 +1771,17 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 			return 0;
 		} else if (ksym == XK_k || ksym == XK_h)
 			i = ksym & 1;
-		else if (ksym == XK_l || ksym == XK_j)
+		else if (ksym == XK_K) {
+			i = ksym & 1;
+			kbds_quant = 5;
+			term.dirty[0] = 1;
+		} else if (ksym == XK_l || ksym == XK_j)
 			i = ((ksym & 6) | 4) >> 1;
-		else if (ksym >= XK_KP_Left && ksym <= XK_KP_Down)
+		else if (ksym == XK_J) {
+			i = ((ksym & 6) | 4) >> 1;
+			kbds_quant = 5;
+			term.dirty[0] = 1;
+		} else if (ksym >= XK_KP_Left && ksym <= XK_KP_Down)
 			i = ksym - XK_KP_Left;
 		else if ((XK_Home & ksym) != XK_Home || (i = (ksym ^ XK_Home) - 1) > 3)
 			return 0;
