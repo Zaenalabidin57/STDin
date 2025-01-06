@@ -806,7 +806,7 @@ int
 kbds_ismatch_regex(KCursor c)
 {
 	Rune *target_str;
-	unsigned int i;
+	unsigned int i,j,k;
 	char *pattern;
 	c.line = TLINE(c.y);
 	c.len = tlinelen(c.line);
@@ -814,13 +814,18 @@ kbds_ismatch_regex(KCursor c)
 	for (i=0; pattern_list[i] != NULL; i++) {
 		pattern = pattern_list[i];
 		target_str = xmalloc((c.len + 1) * sizeof(Rune));
-
-		for (size_t j = 0; j < c.len; j++) {
-    		target_str[j] = c.line[j].u;
+		k = 0;
+		for (j = 0; j < c.len; j++) {
+			if (c.line[j].u != '\0' && c.line[j].u != L'\0') {
+    			target_str[k] = (Rune)c.line[j].u;
+				k++;
+			} else {
+				target_str[k] = L' ';
+				k++;
+			}
     	}
 
-		target_str[c.len] = L'\0';
-
+		target_str[k] = L'\0';
 		get_position_from_regex(c,pattern, target_str);
 
 		XFree(target_str);
