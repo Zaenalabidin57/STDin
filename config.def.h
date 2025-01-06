@@ -15,16 +15,17 @@ static char *font2[] = {
 /* For quick automatic matching in Flash mode, 
  * use () sub-patterns to define the range to be copied*/
 char *pattern_list[] = {
-	".*commit ([^ \n\\^]+)", //git hash in lazygit
+	"commit ([^ \n\\^]+)", //git hash in lazygit
 	"(http://[^ \n\\^]*)", // url
 	"(https://[^ \n\\^]*)", // url
 	"(file://[^ \n\\^]*)", // url
 	"(~{0,1}(/[a-zA-Z0-9_.-]+)+)", // file path
-	"(#[a-zA-Z0-9]{6}).*", // hex color
+	"(#[a-zA-Z0-9]{6})", // hex color
 	"([0-9a-zA-Z]{8}) [A-Za-z]{2} ", //git hash in lazygit
-	"([0-9]{4,})\\b", // long number
-	"([0-9a-z]{40})\\b", // git hash
 	"([a-zA-Z0-9]+@[a-zA-Z0-9]+\\.com)", //email
+	"([0-9]{4,})", // long number
+	"([0-9a-z]{40})", // git hash
+	// "安 全 代 码 : ([0-9]*)", // 中文匹配需要在每个中文后面加一个空格，安全代码-> "安 全 代 码 "
 	"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})", //uuid
 	NULL 
 };
@@ -269,7 +270,7 @@ unsigned int highlightbg = 3;
 
 /* Foreground and background color of flash label */
 unsigned int flashlabelfg = 15;
-unsigned int flashlabelbg = 9;
+unsigned int flashlabelbg = 1;
 unsigned int flashtextfg = 8;
 unsigned int flashtextbg = 0;
 
