@@ -704,6 +704,8 @@ kbds_searchall(void)
 void apply_regex_result(KCursor c, RegexResult result) {
 	KCursor m;
 	RegexKCursor regex_kcursor;
+	int i;
+	int is_exists_regex;
 	m.y = c.y;
 	m.line = TLINE(c.y);
 	m.len = tlinelen(m.line);
@@ -713,7 +715,18 @@ void apply_regex_result(KCursor c, RegexResult result) {
 	regex_kcursor.pattern = result.pattern;
 	regex_kcursor.matched_substring = result.matched_substring;
 	regex_kcursor.c.line[regex_kcursor.c.x].ubk = regex_kcursor.c.line[regex_kcursor.c.x].u;
-	insert_regex_kcursor_array(&regex_kcursor_record, regex_kcursor);		
+	is_exists_regex = 0;
+	for (i = 0; i < regex_kcursor_record.used; i++) {
+		if (regex_kcursor.c.y == regex_kcursor_record.array[i].c.y && regex_kcursor.c.x == regex_kcursor_record.array[i].c.x) {
+			is_exists_regex = 1;
+			if (regex_kcursor.len > regex_kcursor_record.array[i].len) {
+				regex_kcursor_record.array[i] = regex_kcursor;
+			}
+			break;
+		}
+	}
+	if (is_exists_regex == 0) 
+		insert_regex_kcursor_array(&regex_kcursor_record, regex_kcursor);		
 }
 
 void get_position_from_regex(KCursor c, char *pattern_mb, unsigned int *wstr) {
