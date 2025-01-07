@@ -100,7 +100,8 @@ static int hit_input_first = 0;
 static Rune hit_input_first_label;
 
 static const char *flash_key_label[] = {
-	"j", "f", "d", "k", "l", "h", "g", "a", "s", "o",
+	"j", "f", "d", "k",
+	"l", "h", "g", "a", "s", "o",
 	"i", "e", "u", "n", "c", "m", "r", "p", "b", "t",
 	"w", "v", "x", "y", "q", "z",
 	"I", "J", "L", "H", "A", "B", "Y", "D", "E", "F",
@@ -1053,7 +1054,7 @@ kbds_search_url(void)
 	for ( i = 0; i < url_kcursor_record.used; i++) {
 		if (label_need > LEN(flash_key_label) - 1 && count >= LEN(flash_double_key_label)) {
 			continue;
-		} else if(count >= LEN(flash_key_label)) {
+		} else if(label_need <= LEN(flash_key_label) - 1 && count >= LEN(flash_double_key_label)) {
 			continue;
 		}
 		is_exists_url = 0;
@@ -1143,7 +1144,7 @@ jump_to_label(Rune label, int len) {
 			if (hit_input_first == 1 && hit_input_first_label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x].u && label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x + 1].u) {
 				hit_input_first = 0;
 				kbds_clearhighlights();
-				openUrlOnClick(url_kcursor_record.array[i].c.x+1, url_kcursor_record.array[i].c.y, url_opener);
+				openUrlOnClick(url_kcursor_record.array[i].c.x, url_kcursor_record.array[i].c.y, url_opener);
 				return;
 			}
 		}		
