@@ -1014,6 +1014,8 @@ kbds_search_url(void)
 				if (url != NULL ) {
 					is_exists_url = 0;
 					for (h = 0; h < url_kcursor_record.used; h++) {
+						if (enable_same_label == 0)
+							break;
 						if (strcmp(url_kcursor_record.array[h].url, url) == 0) {
 							is_exists_url = 1;
 							repeat_exists_url_index = h;
@@ -1073,6 +1075,8 @@ kbds_search_url(void)
 		}
 
 		for (h = 0; h < i; h++) {
+			if (enable_same_label == 0)
+				break;
 			if (strcmp(url_kcursor_record.array[h].url, url_kcursor_record.array[i].url) == 0) {
 				is_exists_url = 1;
 				repeat_exists_url_index = h;

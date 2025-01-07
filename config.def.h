@@ -30,6 +30,9 @@ char *pattern_list[] = {
 	NULL 
 };
 
+/* use for url search when url is a same value*/
+unsigned int enable_same_label = 0;
+
 /* Disable bold and italic fonts globally */
 unsigned int disable_bold = 0;
 unsigned int disable_italic = 0;
