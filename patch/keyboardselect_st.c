@@ -1053,9 +1053,9 @@ kbds_search_url(void)
 
 	for ( i = 0; i < url_kcursor_record.used; i++) {
 		if (label_need > LEN(flash_key_label) - 1 && count >= LEN(flash_double_key_label)) {
-			continue;
+			break;
 		} else if(label_need <= LEN(flash_key_label) - 1 && count >= LEN(flash_double_key_label)) {
-			continue;
+			break;
 		}
 		is_exists_url = 0;
 
