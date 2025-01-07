@@ -1,9 +1,14 @@
-st-fl
+st-fl:
 
-foot  url  quick jump mode: Ctrl + u
-wezterm quick select mode: Ctrl + o
-flash.nvim like jump cursor:  Ctrl + i
-wezterm like vi mode: Ctrl + Shift + Space
+A st terminal that integrates other vi mode functions
+
+- foot  url  quick jump mode: Ctrl + u
+
+- wezterm quick select mode: Ctrl + o
+
+- flash.nvim like jump cursor:  Ctrl + i
+
+- wezterm like vi mode: Ctrl + Shift + Space
 
 vi  mode keybind refer to
 
