@@ -69,7 +69,6 @@ enum glyph_attribute {
 	ATTR_BOLD_FAINT = ATTR_BOLD | ATTR_FAINT,
 	ATTR_SIXEL          = 1 << 15,
 	ATTR_FLASH_LABEL    = 1 << 16,
-	ATTR_FLASH_LABEL_HIT    = 1 << 17,
 };
 
 enum extra_attribute {

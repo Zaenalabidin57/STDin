@@ -534,21 +534,24 @@ kbds_clearhighlights(void)
 {
 	int x, y;
 	Line line;
+	Rune u;
 
 	for (y = (IS_SET(MODE_ALTSCREEN) ? 0 : -term.histf); y < term.row; y++) {
 		line = TLINEABS(y);
 		for (x = 0; x < term.col; x++) {
 			if (kbds_isurlmode() && line[x].mode & ATTR_FLASH_LABEL && hit_input_first == 1 && is_in_flash_used_label(line[x].u) == 1) {
-				line[x].mode |= ATTR_FLASH_LABEL_HIT;
+				line[x].mode &= ~ATTR_FLASH_LABEL;
+				u = line[x].u;
+				line[x].u = line[x].ubk;
+				line[x].ubk = u; //backup the first hit label for judge in double hit
 				continue;
 			}
-			if (kbds_isurlmode() && line[x].mode & ATTR_FLASH_LABEL && hit_input_first == 1 && is_in_flash_used_double_label(line[x].u) == 1) {
+			if (kbds_isurlmode() && line[x].mode & ATTR_FLASH_LABEL && hit_input_first == 1 && is_in_flash_used_double_label(line[x].u) == 1 && line[x-1].ubk == hit_input_first_label) {
 				continue;
 			}
 			line[x].mode &= ~ATTR_HIGHLIGHT;
 			if (line[x].mode & ATTR_FLASH_LABEL) {
 				line[x].mode &= ~ATTR_FLASH_LABEL;
-				line[x].mode &= ~ATTR_FLASH_LABEL_HIT;
 				line[x].u = line[x].ubk;
 			}
 		}
@@ -1141,7 +1144,7 @@ jump_to_label(Rune label, int len) {
 				hit_input_first_label = label;
 				return;
 			}
-			if (hit_input_first == 1 && hit_input_first_label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x].u && label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x + 1].u) {
+			if (hit_input_first == 1 && hit_input_first_label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x].ubk && label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x + 1].u) {
 				hit_input_first = 0;
 				kbds_clearhighlights();
 				openUrlOnClick(url_kcursor_record.array[i].c.x, url_kcursor_record.array[i].c.y, url_opener);
