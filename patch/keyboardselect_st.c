@@ -97,6 +97,7 @@ static KCursorArray flash_kcursor_record;
 static RegexKCursorArray regex_kcursor_record;
 static UrlKCursorArray url_kcursor_record;
 static int hit_input_first = 0;
+static Rune hit_input_first_label;
 
 static const char *flash_key_label[] = {
 	"j", "f", "d", "k", "l", "h", "g", "a", "s", "o",
@@ -536,12 +537,17 @@ kbds_clearhighlights(void)
 	for (y = (IS_SET(MODE_ALTSCREEN) ? 0 : -term.histf); y < term.row; y++) {
 		line = TLINEABS(y);
 		for (x = 0; x < term.col; x++) {
+			if (kbds_isurlmode() && line[x].mode & ATTR_FLASH_LABEL && hit_input_first == 1 && is_in_flash_used_label(line[x].u) == 1) {
+				line[x].mode |= ATTR_FLASH_LABEL_HIT;
+				continue;
+			}
 			if (kbds_isurlmode() && line[x].mode & ATTR_FLASH_LABEL && hit_input_first == 1 && is_in_flash_used_double_label(line[x].u) == 1) {
 				continue;
 			}
 			line[x].mode &= ~ATTR_HIGHLIGHT;
 			if (line[x].mode & ATTR_FLASH_LABEL) {
 				line[x].mode &= ~ATTR_FLASH_LABEL;
+				line[x].mode &= ~ATTR_FLASH_LABEL_HIT;
 				line[x].u = line[x].ubk;
 			}
 		}
@@ -1131,9 +1137,10 @@ jump_to_label(Rune label, int len) {
 		for ( i = 0; i < url_kcursor_record.used; i++) {
 			if (hit_input_first == 0 && label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x].u) {
 				hit_input_first = 1;
+				hit_input_first_label = label;
 				return;
 			}
-			if (hit_input_first == 1 && label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x + 1].u) {
+			if (hit_input_first == 1 && hit_input_first_label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x].u && label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x + 1].u) {
 				hit_input_first = 0;
 				kbds_clearhighlights();
 				openUrlOnClick(url_kcursor_record.array[i].c.x+1, url_kcursor_record.array[i].c.y, url_opener);
