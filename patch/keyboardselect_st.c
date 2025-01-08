@@ -124,9 +124,9 @@ static const char *flash_double_key_label[] = {
 	
 	"ap", "ay", "am", "sp", "sy", "sm", "dp", "dy", 
 	"dm", "fp", "fy", "fm", "gp", "gy", "gm", "ep",
-	"ey", "em", "rp", "ry", "rm","cp", "cy", "cm",
-	"wp", "wy", "wm","tp", "ty", "tm", "vp", "vy", 
-	"vm","xp", "xy", "xm", "bp", "by", "bm", "qp", 
+	"ey", "em", "rp", "ry", "rm", "cp", "cy", "cm",
+	"wp", "wy", "wm", "tp", "ty", "tm", "vp", "vy", 
+	"vm", "xp", "xy", "xm", "bp", "by", "bm", "qp", 
 	"qy", "qm"
 };
 
@@ -921,8 +921,6 @@ kbds_search_regex(void)
 			str_len = 0;
 		}
 	}
-
-
 
 	for ( i = 0; (count < LEN(flash_key_label)) && (i < regex_kcursor_record.used); i++) {
 		is_exists_str = 0;
