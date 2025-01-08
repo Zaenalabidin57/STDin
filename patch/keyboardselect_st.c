@@ -35,15 +35,13 @@ typedef struct {
 typedef struct {
 	unsigned int start;
 	unsigned int len;
-	char * pattern;
-	wchar_t * matched_substring;
+	wchar_t *matched_substring;
 } RegexResult;
 
 typedef struct {
 	KCursor c;
 	unsigned int len;
-	char * pattern;
-	wchar_t * matched_substring;
+	wchar_t *matched_substring;
 } RegexKCursor;
 
 typedef struct {
@@ -100,8 +98,7 @@ static int hit_input_first = 0;
 static Rune hit_input_first_label;
 
 static const char *flash_key_label[] = {
-	"j", "f", "d", "k",
-	"l", "h", "g", "a", "s", "o",
+	"j", "f", "d", "k","l", "h", "g", "a", "s", "o",
 	"i", "e", "u", "n", "c", "m", "r", "p", "b", "t",
 	"w", "v", "x", "y", "q", "z",
 	"I", "J", "L", "H", "A", "B", "Y", "D", "E", "F",
@@ -125,21 +122,12 @@ static const char *flash_double_key_label[] = {
 	"bu", "bi", "bo", "bh", "bj", "bk", "bl", "bn",
 	"qu", "qi", "qo", "qh", "qj", "qk", "ql", "qn",
 	
-	"ap", "ay", "am",
-	"sp", "sy", "sm",
-	"dp", "dy", "dm",
-	"fp", "fy", "fm",
-	"gp", "gy", "gm",
-	"ep", "ey", "em",
-	"rp", "ry", "rm",
-	"cp", "cy", "cm",
-	"wp", "wy", "wm",
-	"tp", "ty", "tm",
-	"vp", "vy", "vm",
-	"xp", "xy", "xm",
-	"bp", "by", "bm",
-	"qp", "qy", "qm",
-
+	"ap", "ay", "am", "sp", "sy", "sm", "dp", "dy", 
+	"dm", "fp", "fy", "fm", "gp", "gy", "gm", "ep",
+	"ey", "em", "rp", "ry", "rm","cp", "cy", "cm",
+	"wp", "wy", "wm","tp", "ty", "tm", "vp", "vy", 
+	"vm","xp", "xy", "xm", "bp", "by", "bm", "qp", 
+	"qy", "qm"
 };
 
 void
@@ -770,7 +758,6 @@ void apply_regex_result(KCursor c, RegexResult result) {
 	m.x = (int)(result.start % term.col);
 	regex_kcursor.c = m;
 	regex_kcursor.len = result.len;
-	regex_kcursor.pattern = result.pattern;
 	regex_kcursor.matched_substring = result.matched_substring;
 	regex_kcursor.c.line[regex_kcursor.c.x].ubk = regex_kcursor.c.line[regex_kcursor.c.x].u;
 	is_exists_regex = 0;
@@ -851,7 +838,6 @@ void get_position_from_regex(KCursor c, char *pattern_mb, unsigned int *wstr) {
     	    PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
     	    result.start = ovector[2];
     	    result.len = ovector[3] - ovector[2];
-			result.pattern = pattern_mb;
 
     	    // get the matched string
     	    wchar_t *match_str = xmalloc((result.len + 1) * sizeof(wchar_t));
@@ -969,8 +955,6 @@ kbds_search_regex(void)
 
 	}
 
-	unsigned int backup_kcursor_y = 0;
-	unsigned int backup_kcursor_x = 0;
 	KCursor temp_c;
 	for ( i = 0; i < regex_kcursor_record.used;i++) {
 
