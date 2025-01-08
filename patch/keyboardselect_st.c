@@ -765,7 +765,7 @@ void apply_regex_result(KCursor c, RegexResult result) {
 	int i;
 	int is_exists_regex;
 	m.y = c.y + (int)(result.start/term.col);
-	m.line = TLINE(c.y);
+	m.line = TLINE(m.y);
 	m.len = tlinelen(m.line);
 	m.x = (int)(result.start % term.col);
 	regex_kcursor.c = m;
@@ -783,8 +783,9 @@ void apply_regex_result(KCursor c, RegexResult result) {
 			break;
 		}
 	}
-	if (is_exists_regex == 0) 
+	if (is_exists_regex == 0) {
 		insert_regex_kcursor_array(&regex_kcursor_record, regex_kcursor);		
+	}
 }
 
 void get_position_from_regex(KCursor c, char *pattern_mb, unsigned int *wstr) {
