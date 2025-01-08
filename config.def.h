@@ -24,7 +24,6 @@ char *pattern_list[] = {
 	"([0-9a-zA-Z]{8}) [A-Za-z]{2} ", //git hash in lazygit
 	"([a-zA-Z0-9]+@[a-zA-Z0-9]+\\.com)", //email
 	"([0-9]{4,})", // long number
-	"([0-9a-z]{40})", // git hash
 	// "安 全 代 码 : ([0-9]*)", // 中文匹配需要在每个中文后面加一个空格，安全代码-> "安 全 代 码 "
 	"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})", //uuid
 	NULL 
