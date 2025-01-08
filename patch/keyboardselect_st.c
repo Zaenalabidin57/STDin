@@ -1021,7 +1021,7 @@ kbds_search_url(void)
 		c.len = tlinelen(c.line);
 
 		for (c.x = 0; c.x < c.len; c.x++) {
-			url = detecturl(c.x,c.y,1);
+			url = detecturl(c.x,c.y,0);
 			if (url == NULL && head_hit == 0) 
 				continue;
 			else if (head_hit == 0) {
@@ -1037,7 +1037,7 @@ kbds_search_url(void)
 			}
 
 			if (head_hit != 0 && bottom_hit != 0 && head != bottom) {
-				url = detecturl(head,hit_url_y,1);
+				url = detecturl(head,hit_url_y,0);
 				if (url != NULL ) {
 					is_exists_url = 0;
 					for (h = 0; h < url_kcursor_record.used; h++) {
