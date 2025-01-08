@@ -764,10 +764,10 @@ void apply_regex_result(KCursor c, RegexResult result) {
 	RegexKCursor regex_kcursor;
 	int i;
 	int is_exists_regex;
-	m.y = c.y;
+	m.y = c.y + (int)(result.start/term.col);
 	m.line = TLINE(c.y);
 	m.len = tlinelen(m.line);
-	m.x = result.start;
+	m.x = (int)(result.start % term.col);
 	regex_kcursor.c = m;
 	regex_kcursor.len = result.len;
 	regex_kcursor.pattern = result.pattern;
