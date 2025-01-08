@@ -873,34 +873,41 @@ void get_position_from_regex(KCursor c, char *pattern_mb, unsigned int *wstr) {
     XFree(wtext);
 }
 
-int
-kbds_ismatch_regex(KCursor c)
+void
+kbds_ismatch_regex(unsigned int begin, unsigned int end, unsigned int len)
 {
 	Rune *target_str;
-	unsigned int i,j,k;
+	unsigned int i,j;
 	char *pattern;
-	c.line = TLINE(c.y);
-	c.len = tlinelen(c.line);
+	unsigned h = 0;
+	KCursor c,begin_c;
+	target_str = xmalloc((len + 1) * sizeof(Rune));
+	begin_c.y = begin;
+	begin_c.line = TLINE(begin);
+	begin_c.len = tlinelen(begin_c.line);
+	begin_c.x = 0;
+
+	for (c.y = begin; c.y <= end; c.y++) {
+		c.line = TLINE(c.y);
+		c.len = tlinelen(c.line);
+		
+		for (j = 0; j < c.len; j++) {
+			if (c.line[j].u != '\0' && c.line[j].u != L'\0') {
+    			target_str[h] = (Rune)c.line[j].u;
+				h++;
+			} else {
+				target_str[h] = L' ';
+				h++;
+			}
+    	}
+		target_str[h] = L'\0';
+	}
 
 	for (i=0; pattern_list[i] != NULL; i++) {
 		pattern = pattern_list[i];
-		target_str = xmalloc((c.len + 1) * sizeof(Rune));
-		k = 0;
-		for (j = 0; j < c.len; j++) {
-			if (c.line[j].u != '\0' && c.line[j].u != L'\0') {
-    			target_str[k] = (Rune)c.line[j].u;
-				k++;
-			} else {
-				target_str[k] = L' ';
-				k++;
-			}
-    	}
-
-		target_str[k] = L'\0';
-		get_position_from_regex(c,pattern, target_str);
-
-		XFree(target_str);
+		get_position_from_regex(begin_c,pattern, target_str);
 	}
+	XFree(target_str);
 }
 
 int
@@ -911,13 +918,24 @@ kbds_search_regex(void)
 	unsigned int is_exists_str;
 	unsigned int is_exists_str_index = 0;
 	unsigned int count = 0;
+	unsigned int begin_y = 0;
+	unsigned int str_len = 0;
 
 	init_char_array(&flash_used_label, 1);
 	init_regex_kcursor_array(&regex_kcursor_record, 1);
 
 	for (c.y = 0; c.y <= term.row - 1; c.y++) {
-		kbds_ismatch_regex(c);
+		c.line = TLINE(c.y);
+		c.len = tlinelen(c.line);
+		str_len = str_len + c.len;
+		if (!(c.line[c.len-1].mode & ATTR_WRAP)) {
+			kbds_ismatch_regex(begin_y,c.y,str_len);
+			begin_y = c.y + 1;
+			str_len = 0;
+		}
 	}
+
+
 
 	for ( i = 0; (count < LEN(flash_key_label)) && (i < regex_kcursor_record.used); i++) {
 		is_exists_str = 0;
@@ -950,9 +968,18 @@ kbds_search_regex(void)
 
 	}
 
+	unsigned int backup_kcursor_y = 0;
+	unsigned int backup_kcursor_x = 0;
+	KCursor temp_c;
 	for ( i = 0; i < regex_kcursor_record.used;i++) {
-		for ( j = 1; j < regex_kcursor_record.array[i].len; j++) {
-			regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x + j].mode |= ATTR_HIGHLIGHT;
+
+		temp_c.y = regex_kcursor_record.array[i].c.y;
+		temp_c.line = TLINE(temp_c.y);
+		temp_c.len = tlinelen(temp_c.line);
+		temp_c.x = regex_kcursor_record.array[i].c.x;
+		for ( j = 0; j < regex_kcursor_record.array[i].len; j++) {
+			temp_c.line[temp_c.x].mode |= ATTR_HIGHLIGHT;
+			kbds_moveforward(&temp_c, 1, KBDS_WRAP_LINE);
 		}
 	}
 
@@ -961,21 +988,11 @@ kbds_search_regex(void)
 	return count;
 }
 
-void copy_regex_result(KCursor m, unsigned int len) {
-	char *dest = xmalloc((len+1) * sizeof(Rune));
-	char *dup;
-	int i;
-	for (i = 0; i < len; i++) {
-		if (i == 0)
-			dest[i] = m.line[m.x].ubk;
-		else
-			dest[i] = m.line[m.x+i].u;
-	}
-	dest[len] = L'\0';
-	dup = strdup(dest);
-	XFree(dest);
-
-	xsetsel(dup);
+void copy_regex_result(wchar_t *wstr) {
+    size_t mb_size = wcstombs(NULL, wstr, 0) + 1; 
+    char *mb_str = (char *)malloc(mb_size * sizeof(char)); 
+ 	wcstombs(mb_str, wstr, mb_size);	
+	xsetsel(mb_str);
 }
 
 int
@@ -1014,7 +1031,7 @@ kbds_search_url(void)
 				continue;
 			}
 
-			if ((head_hit !=0 && url == NULL ) || c.x == c.len - 1) {
+			if (head_hit !=0 && (url == NULL || (!(c.line[c.x].mode & ATTR_WRAP) && c.x == c.len - 1))) {	
 				bottom = c.x - 1;
 				bottom_hit = 1;	
 			}
@@ -1036,8 +1053,8 @@ kbds_search_url(void)
 						label_need ++;
 					}
 					m.x = head;
-					m.y = c.y;
-					m.line = TLINE(c.y);
+					m.y = hit_url_y;
+					m.line = TLINE(hit_url_y);
 					m.len = tlinelen(m.line);
 					url_kcursor.c = m;
 					url_kcursor.url = xmalloc((strlen(url) + 1)* sizeof(char));
@@ -1166,7 +1183,7 @@ jump_to_label(Rune label, int len) {
 		for ( i = 0; i < regex_kcursor_record.used; i++) {
 			if (label == regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x].u) {
 				kbds_clearhighlights();
-				copy_regex_result(regex_kcursor_record.array[i].c, regex_kcursor_record.array[i].len);
+				copy_regex_result(regex_kcursor_record.array[i].matched_substring);
 				return;
 			}
 		}		
