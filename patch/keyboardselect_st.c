@@ -1711,6 +1711,7 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 		kbds_clearhighlights();
 		kbds_search_regex();
 		return 0;
+	case XK_u:
 	case -6:
 		kbds_searchobj.directsearch = (ksym == -6);
 		kbds_searchobj.dir = 1;
@@ -1861,11 +1862,8 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 	case XK_X:
 		kbds_jumptoprompt(1);
 		break;
-	case XK_u:
-		openUrlOnClick(kbds_c.x, kbds_c.y, url_opener);
-		break;
 	case XK_U:
-		copyUrlOnClick(kbds_c.x, kbds_c.y);
+		openUrlOnClick(kbds_c.x, kbds_c.y, url_opener);
 		break;
 	case XK_0:
 	case XK_KP_0:
