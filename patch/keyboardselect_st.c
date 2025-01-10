@@ -759,7 +759,8 @@ void apply_regex_result(KCursor c, RegexResult result) {
 		if (regex_kcursor.c.y == regex_kcursor_record.array[i].c.y && regex_kcursor.c.x == regex_kcursor_record.array[i].c.x) {
 			is_exists_regex = 1;
 			// update the length record of the position if the new match length is longer
-			if (regex_kcursor.len > regex_kcursor_record.array[i].len) { 
+			if (regex_kcursor.len > regex_kcursor_record.array[i].len) {
+				free(regex_kcursor_record.array[i].matched_substring); 
 				regex_kcursor_record.array[i] = regex_kcursor;
 			}
 			break;
@@ -909,7 +910,7 @@ kbds_search_regex(void)
 		c.line = TLINE(c.y);
 		c.len = tlinelen(c.line);
 		str_len = str_len + c.len;
-		if (!(c.line[c.len-1].mode & ATTR_WRAP)) {
+		if (c.len == 0 || !kbds_iswrapped(&c)) {
 			kbds_ismatch_regex(begin_y,c.y,str_len);
 			begin_y = c.y + 1;
 			str_len = 0;
@@ -1041,7 +1042,6 @@ kbds_search_url(void)
 					m.line = TLINE(hit_url_y);
 					m.len = tlinelen(m.line);
 					url_kcursor.c = m;
-					url_kcursor.url = xmalloc((strlen(url) + 1)* sizeof(char));
 					url_kcursor.url = strdup(url);
 					insert_url_kcursor_array(&url_kcursor_record, url_kcursor);
 				}
