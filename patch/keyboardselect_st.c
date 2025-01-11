@@ -1,6 +1,6 @@
 #define PCRE2_CODE_UNIT_WIDTH 32
 #include <pcre2.h>
-#include "pinyin_map.h"
+#include "keyboardselect_pinyin.h"
 
 enum keyboardselect_mode {
 	KBDS_MODE_MOVE    = 0,
