@@ -1,5 +1,6 @@
 #define PCRE2_CODE_UNIT_WIDTH 32
 #include <pcre2.h>
+#include "pinyin_map.h"
 
 enum keyboardselect_mode {
 	KBDS_MODE_MOVE    = 0,
@@ -649,7 +650,8 @@ int
 kbds_ismatch(KCursor c)
 {
 	KCursor m = c;
-	int i, next;
+	int i,is_exists_next = 1;
+	int is_hit_zh;
 	Rune u;
 
 	if (c.x + kbds_searchobj.len > c.len && (!kbds_iswrapped(&c) || c.y >= kbds_bot()))
@@ -658,13 +660,21 @@ kbds_ismatch(KCursor c)
 	if (kbds_searchobj.wordonly && !kbds_isdelim(c, -1, kbds_sdelim))
 		return 0;
 
-	for (next = 0, i = 0; i < kbds_searchobj.len; i++) {
+	for (i = 0; i < kbds_searchobj.len; i++) {
 		if (kbds_searchobj.str[i].mode & ATTR_WDUMMY)
 			continue;
-		if ((next++ && !kbds_moveforward(&c, 1, KBDS_WRAP_LINE)) ||
-		    (!kbds_searchobj.ignorecase && kbds_searchobj.str[i].u != c.line[c.x].u) ||
-		    (kbds_searchobj.ignorecase && kbds_searchobj.str[i].u != towlower(c.line[c.x].u)))
+
+		is_hit_zh = find_pinyin_initials(c.line[c.x].u,towlower(kbds_searchobj.str[i].u));
+
+		if (
+			(!is_hit_zh && !kbds_searchobj.ignorecase && kbds_searchobj.str[i].u != c.line[c.x].u) ||
+			(!is_hit_zh && kbds_searchobj.ignorecase && kbds_searchobj.str[i].u != towlower(c.line[c.x].u))
+		)
 			return 0;
+		if (is_exists_next == 0)
+			return 0;
+		is_exists_next = kbds_moveforward(&c, 1, KBDS_WRAP_LINE);
+
 	}
 
 	if (kbds_searchobj.wordonly && !kbds_isdelim(c, 1, kbds_sdelim))
@@ -678,9 +688,17 @@ kbds_ismatch(KCursor c)
 	}
 
 	if (kbds_isflashmode()) {
+		const char *zh = get_pinyin_initials(m.line[m.x].u);
 		m.line[m.x].ubk = m.line[m.x].u;
-		u = kbds_searchobj.ignorecase ? towlower(m.line[m.x].u) : m.line[m.x].u;
-		insert_char_array(&flash_next_char_record, u);
+		if (zh != NULL) {
+			for(i=0;zh[i] != 0;i++){
+				u = zh[i];
+				insert_char_array(&flash_next_char_record, u);
+			}
+		} else {
+			u =  kbds_searchobj.ignorecase ? towlower(m.line[m.x].u) : m.line[m.x].u;
+			insert_char_array(&flash_next_char_record, u);
+		}
 		insert_kcursor_array(&flash_kcursor_record, m);
 	}
 
@@ -1157,7 +1175,8 @@ kbds_search_url(void)
 
 void
 jump_to_label(Rune label, int len) {
-	int i;
+	int i,j;
+	int move_x = 0;
 
 	// double label hit
 	if (kbds_isurlmode() && flash_used_double_label.used > 0) {
@@ -1199,8 +1218,15 @@ jump_to_label(Rune label, int len) {
 
 	for ( i = 0; i < flash_kcursor_record.used; i++) {
 		if (label == flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].u) {
-			kbds_clearhighlights();
-			kbds_moveto(flash_kcursor_record.array[i].x-len, flash_kcursor_record.array[i].y);
+			for (j=1;j<=len;j++){
+				if (flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x-j].u >=  0x80)
+				 move_x = move_x + 3; //中文要移动三个位置
+				else
+				 move_x = move_x + 1;
+			}
+
+			kbds_moveto(flash_kcursor_record.array[i].x-move_x, flash_kcursor_record.array[i].y);
+			return;
 		}
 	}
 }
