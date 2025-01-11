@@ -1219,7 +1219,7 @@ jump_to_label(Rune label, int len) {
 
 	for ( i = 0; i < flash_kcursor_record.used; i++) {
 		if (label == flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].u) {
-			if (flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].mode & ATTR_HIGHLIGHT && flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].mode & ATTR_FLASH_LABEL) {
+			if ((flash_kcursor_record.array[i].x == flash_kcursor_record.array[i].len -2 && flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x+1].mode & ATTR_WDUMMY) || (flash_kcursor_record.array[i].x == flash_kcursor_record.array[i].len -1) && flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].mode & ATTR_HIGHLIGHT && flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].mode & ATTR_FLASH_LABEL) {
 				len = len - 1;
 			}
 			for (j=1;j<=len;j++){
