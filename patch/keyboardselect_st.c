@@ -679,11 +679,12 @@ kbds_ismatch(KCursor c)
 
 	if (kbds_searchobj.wordonly && !kbds_isdelim(c, 1, kbds_sdelim))
 		return 0;
-
+	is_exists_next = 1;
 	for (i = 0; i < kbds_searchobj.len; i++) {
 		if (!(kbds_searchobj.str[i].mode & ATTR_WDUMMY)) {
 			m.line[m.x].mode |= ATTR_HIGHLIGHT;
-			kbds_moveforward(&m, 1, KBDS_WRAP_LINE);
+			if (is_exists_next == 1)
+				is_exists_next = kbds_moveforward(&m, 1, KBDS_WRAP_LINE);
 		}
 	}
 
@@ -1218,7 +1219,11 @@ jump_to_label(Rune label, int len) {
 
 	for ( i = 0; i < flash_kcursor_record.used; i++) {
 		if (label == flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].u) {
+			if (flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].mode & ATTR_HIGHLIGHT && flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].mode & ATTR_FLASH_LABEL) {
+				len = len - 1;
+			}
 			for (j=1;j<=len;j++){
+
 				if (flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x-j].u >=  0x80)
 				 move_x = move_x + 3; //中文要移动三个位置
 				else
