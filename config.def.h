@@ -49,7 +49,10 @@ char *pattern_list[] = {
 };
 
 /* use for url search when url is a same value*/
-unsigned int enable_same_label = 0;
+unsigned int enable_url_same_label = 0;
+
+/* use for regex search when regex is a same value*/
+unsigned int enable_regex_same_label = 0;
 
 /* Disable bold and italic fonts globally */
 unsigned int disable_bold = 0;
