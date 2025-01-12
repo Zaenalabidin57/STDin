@@ -32,7 +32,8 @@ o:                       switch to regex mode
 Z, X:                    jump to previous/next shell prompt that contains the OSC "133;A" sequence
 0 - 9:                   set the quantifier
 u:                       switch to URL mode
-U:                       copy hyperlink under the cursor to the clipboard
+U:                       open the URL under the cursor
+c:                       copy hyperlink under the cursor to the clipboard
 Y:                       yank (copy) selected text
 y,Return:                  quit keyboard_select, yank and keep the highlight of the selection
 Escape, q:               quit keyboard_select/exit input mode/exit selection mode/reset quantifier

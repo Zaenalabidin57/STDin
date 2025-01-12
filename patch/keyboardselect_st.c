@@ -1905,6 +1905,9 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 	case XK_U:
 		openUrlOnClick(kbds_c.x, kbds_c.y, url_opener);
 		break;
+	case XK_c:
+		copyUrlOnClick(kbds_c.x, kbds_c.y);
+		break;
 	case XK_0:
 	case XK_KP_0:
 		if (!kbds_quant) {
