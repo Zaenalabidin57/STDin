@@ -903,6 +903,9 @@ kbds_ismatch_regex(unsigned int begin, unsigned int end, unsigned int len)
 	begin_c.len = tlinelen(begin_c.line);
 	begin_c.x = 0;
 
+	if (len == 0)
+		return;
+
 	for (c.y = begin; c.y <= end; c.y++) {
 		c.line = TLINE(c.y);
 		c.len = tlinelen(c.line);
@@ -941,7 +944,7 @@ kbds_search_regex(void)
 		c.line = TLINE(c.y);
 		c.len = tlinelen(c.line);
 		str_len = str_len + c.len;
-		if (!kbds_iswrapped(&c)) {
+		if (!kbds_iswrapped(&c) || c.y == term.row - 1) {
 			kbds_ismatch_regex(begin_y,c.y,str_len);
 			begin_y = c.y + 1;
 			str_len = 0;
@@ -999,7 +1002,7 @@ kbds_search_regex(void)
 
 void copy_regex_result(wchar_t *wstr) {
 	size_t mb_size = wcstombs(NULL, wstr, 0) + 1;
-	char *mb_str = (char *)malloc(mb_size * sizeof(char));
+	char *mb_str = (char *)xmalloc(mb_size * sizeof(char));
 	wcstombs(mb_str, wstr, mb_size);
 	xsetsel(mb_str);
 }
@@ -1007,15 +1010,14 @@ void copy_regex_result(wchar_t *wstr) {
 int
 kbds_search_url(void)
 {
-	KCursor c,m;
+	KCursor c, m;
 	UrlKCursor url_kcursor;
-	unsigned int h,i;
+	unsigned int h, i;
 	unsigned int count = 0;
 	char *url;
 	int is_exists_url = 0;
 	int repeat_exists_url_index = 0;
 	int head = 0;
-	int bottom = 0;
 	int head_hit = 0;
 	int bottom_hit = 0;
 	int hit_url_y;
@@ -1031,25 +1033,23 @@ kbds_search_url(void)
 
 		for (c.x = 0; c.x < c.len; c.x++) {
 			url = detecturl(c.x,c.y,0);
-			if (url == NULL && head_hit == 0)
+			if (!url && !head_hit) {
 				continue;
-			else if (head_hit == 0) { // find the first char which is belong to a url
+			} else if (!head_hit) { // find the first char which is belong to a url
 				head = c.x;
 				head_hit = 1;
 				hit_url_y = c.y;
-				continue;
 			}
 
 			// find the last char which is belong to the url
-			if (head_hit !=0 && (url == NULL || (!(c.line[c.x].mode & ATTR_WRAP) && c.x == c.len - 1))) {
-				bottom = c.x - 1;
+			if (head_hit && (!url || ((!kbds_iswrapped(&c) || c.y == term.row-1) && c.x == c.len - 1))) {
 				bottom_hit = 1;
 			}
 
 			// complete one url match
-			if (head_hit != 0 && bottom_hit != 0 && head != bottom) {
+			if (head_hit && bottom_hit) {
 				url = detecturl(head,hit_url_y,0);
-				if (url != NULL ) {
+				if (url) {
 					is_exists_url = 0;
 					// check if the url is already in the cache
 					for (h = 0; h < url_kcursor_record.used; h++) {
@@ -1062,7 +1062,7 @@ kbds_search_url(void)
 						}
 					}
 					// calculate the number of labels needed
-					if (is_exists_url == 0) {
+					if (!is_exists_url) {
 						label_need ++;
 					}
 					// record the position of the url
@@ -1076,7 +1076,6 @@ kbds_search_url(void)
 				}
 				// reset to match the next url
 				head = 0;
-				bottom = 0;
 				head_hit = 0;
 				bottom_hit = 0;
 			}

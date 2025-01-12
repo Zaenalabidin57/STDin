@@ -16,7 +16,7 @@ static char *font2[] = {
  * use () sub-patterns to define the range to be copied*/
 char *pattern_list[] = {
     // Markdown URL
-    "(\\[[^]]*\\]\\(([^)]+)\\))",
+    "\\[[^]]*\\]\\(([^)]+)\\)",
     // URL
     "((?:https?://|git@|git://|ssh://|ftp://|file://)\\S+)",
     // Diff a
@@ -26,7 +26,7 @@ char *pattern_list[] = {
     // Docker
     "(sha256:([0-9a-f]{64}))",
     // File path
-    "((?:[.\\w\\-@~\u4e00-\u9fa5]+)?(?:/+[.\\w\\-@~\u4e00-\u9fa5]+)+)",
+	"((?:[.\\pL\\pN_\\-@~]+)?(?:/+[.\\pL\\pN_\\-@]+)+)",
     // Color hex code
     "(#[0-9a-fA-F]{6})",
     // UUID
