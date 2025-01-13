@@ -16,7 +16,7 @@ static char *font2[] = {
  * use () sub-patterns to define the range to be copied*/
 char *pattern_list[] = {
     // Markdown URL
-    "\\[[^]]*\\]\\(([^)]+)\\)",
+    "(\\[[^]]*\\]\\(([^)]+)\\))",
     // URL
     "((?:https?://|git@|git://|ssh://|ftp://|file://)\\S+)",
     // Diff a
@@ -42,7 +42,7 @@ char *pattern_list[] = {
     // Hexadecimal address
     "(0x[0-9a-fA-F]+)",
     // Number (at least 4 digits)
-    "([0-9]{4,})",
+    "\\b([0-9]{4,})\\b",
 	// email
 	"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})",
 	NULL 
@@ -52,7 +52,7 @@ char *pattern_list[] = {
 unsigned int enable_url_same_label = 0;
 
 /* use for regex search when regex is a same value*/
-unsigned int enable_regex_same_label = 0;
+unsigned int enable_regex_same_label = 1;
 
 /* Disable bold and italic fonts globally */
 unsigned int disable_bold = 0;
@@ -164,10 +164,10 @@ static unsigned int blinktimeout = 800;
 static unsigned int cursorthickness = 2;
 
 /* Hide the X cursor whenever a key is pressed. 0: off, 1: on */
-int hidecursor = 0;
+int hidecursor = 1;
 
 /* Ligatures. 0: off, 1: on */
-int ligatures = 0;
+int ligatures = 1;
 
 /*
  * Permanently disable ligatures so that they won't be compiled in. You should
