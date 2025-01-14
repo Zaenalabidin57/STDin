@@ -96,6 +96,10 @@ static const char *flash_key_label[] = {
 	"j", "f", "d", "k", "l", "h", "g", "a", "s", "o",
 	"i", "e", "u", "n", "c", "m", "r", "p", "b", "t",
 	"w", "v", "x", "y", "q", "z",
+
+	"I", "J", "L", "H", "O", "K", "U", "M", "N", "P"
+	"A", "D", "G", "S", "E", "F", "W", "C", "V", "Y",
+	// "Q", "Z", "X", "B", "R", "T"
 };
 
 static const char *flash_double_key_label[] = {
