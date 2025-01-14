@@ -226,7 +226,6 @@ static int opt_borderperc = -1;
 static int focused = 0;
 
 static uint buttons; /* bit field of pressed buttons */
-static Cursor cursor;
 static XColor xmousefg, xmousebg;
 static int cursorblinks;
 static Autoscroller asr;
@@ -952,7 +951,6 @@ void
 xloadcols(void)
 {
 	static int loaded;
-	Color *cp;
 
 	if (!loaded) {
 		dc.collen = 1 + defaultbg;

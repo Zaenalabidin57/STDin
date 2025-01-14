@@ -82,7 +82,6 @@ static int kbds_in_use, kbds_quant;
 static int kbds_seltype = SEL_REGULAR;
 static int kbds_mode;
 static int kbds_finddir, kbds_findtill;
-static int kbds_scrolldownonexit;
 static Rune kbds_findchar;
 static KCursor kbds_c, kbds_oc;
 static CharArray flash_next_char_record, flash_used_label, flash_used_double_label;
@@ -1536,7 +1535,7 @@ kbds_getcursor(int *cx, int *cy)
 int
 kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 {
-	int i, q, dy, ox, oy, eol, islast, prevscr, count, wrap;
+	int i, q, dy, ox, oy, eol, islast, prevscr, count;
 	int alt = IS_SET(MODE_ALTSCREEN);
 	Line line;
 	Rune u;
