@@ -19,6 +19,8 @@ char *pattern_list[] = {
     "(\\[[^]]*\\]\\(([^)]+)\\))",
     // URL
     "((?:https?://|git@|git://|ssh://|ftp://|file://)\\S+)",
+	// email
+	"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})",
     // Diff a
     "(--- a/(\\S+))",
     // Diff b
@@ -42,9 +44,8 @@ char *pattern_list[] = {
     // Hexadecimal address
     "(0x[0-9a-fA-F]+)",
     // Number (at least 4 digits)
-    "\\b([0-9]{4,})\\b",
-	// email
-	"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})",
+    "([0-9]{4,})",
+
 	NULL 
 };
 
