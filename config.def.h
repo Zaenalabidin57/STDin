@@ -16,7 +16,7 @@ static char *font2[] = {
  * use () sub-patterns to define the range to be copied*/
 char *pattern_list[] = {
     // Markdown URL
-    "(\\[[^]]*\\]\\(([^)]+)\\))",
+    "\\[[^]]*\\]\\(([^)]+)\\)",
     // URL
     "((?:https?://|git@|git://|ssh://|ftp://|file://)\\S+)",
 	// email
