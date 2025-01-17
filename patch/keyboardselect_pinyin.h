@@ -1,3 +1,4 @@
+#ifdef FLASH_MODE_PINYIN
 typedef struct {
     const char* hanzi;
     const char initials[10]; 
@@ -9967,9 +9968,12 @@ unsigned int get_unicode_value(const char *utf8) {
 
     return unicode;
 }
+#endif
+
 
 // get the pinyin initials of the given unicode
 const char* get_pinyin_initials(unsigned int unicode) {
+#ifdef FLASH_MODE_PINYIN
     int left = 0, right = sizeof(pinyin_initial_map) / sizeof(pinyin_initial_map[0]) - 2; // 去掉最后一个NULL项
     while (left <= right) {
         int mid = (left + right) / 2;
@@ -9982,10 +9986,12 @@ const char* get_pinyin_initials(unsigned int unicode) {
             right = mid - 1;
         }
     }
+#endif
     return NULL;
 }
 
 int find_pinyin_initials(unsigned int unicode, char target_char) {
+#ifdef FLASH_MODE_PINYIN
     const char * initials = get_pinyin_initials(unicode);
     if (initials == NULL) {
         return 0;
@@ -9996,5 +10002,6 @@ int find_pinyin_initials(unsigned int unicode, char target_char) {
             return 1;
         }
     }
+#endif
     return 0;
 }

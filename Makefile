@@ -8,7 +8,7 @@ SRC = st.c x.c $(LIGATURES_C) $(SIXEL_C)
 OBJ = $(SRC:.c=.o)
 
 STLDFLAGS += -lpcre2-32
-# CFLAGS += -g -Wunused-variable
+CFLAGS += -g -Wunused-variable
  
 
 all: st
@@ -17,7 +17,7 @@ config.h:
 	cp config.def.h config.h
 
 .c.o:
-	$(CC) $(STCFLAGS) -c $<
+	$(CC) $(STCFLAGS) $(FLASH_MODE_PINYIN) -c $<
 
 st.o: config.h st.h win.h
 x.o: arg.h config.h st.h win.h $(LIGATURES_H)

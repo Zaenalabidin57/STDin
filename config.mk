@@ -51,3 +51,6 @@ STLDFLAGS = $(LIBS) $(LDFLAGS)
 
 # compiler and linker
 # CC = c99
+
+# flash mode support chinese pinyin
+# FLASH_MODE_PINYIN = -D FLASH_MODE_PINYIN
