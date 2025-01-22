@@ -89,7 +89,6 @@ static KCursorArray kbds_flash_kcursor_record;
 static RegexKCursorArray kbds_regex_kcursor_record;
 static UrlKCursorArray kbds_url_kcursor_record;
 static int kbds_hit_input_first = 0;
-static int kbds_is_disabled_ime = 0;
 static Rune kbds_hit_input_first_label;
 
 static const char *flash_key_label[] = {
@@ -547,7 +546,6 @@ kbds_clearhighlights(void)
 
 void mark_exit() {
 	kbds_in_use = kbds_quant = 0;
-	kbds_is_disabled_ime = 0;
 	XSetICFocus(xw.ime.xic);
 }
 
@@ -1553,12 +1551,6 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 	Line line;
 	Rune u;
 
-	// Disable IME
-	if(!kbds_is_disabled_ime) {
-		kbds_is_disabled_ime = 1;
-		XUnsetICFocus(xw.ime.xic);
-	}
-
 	if (kbds_isurlmode() && !forcequit) {
 		switch (ksym) {
 		case XK_Escape:
@@ -1787,6 +1779,8 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 		kbds_moveto(term.c.x, term.c.y);
 		kbds_oc = kbds_c;
 		kbds_setmode(KBDS_MODE_MOVE);
+		// Disable IME
+		XUnsetICFocus(xw.ime.xic);
 		return MODE_KBDSELECT;
 	case XK_V:
 		if (kbds_mode & KBDS_MODE_LSELECT) {
