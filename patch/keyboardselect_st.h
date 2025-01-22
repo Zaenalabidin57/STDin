@@ -8,3 +8,4 @@ int kbds_isurlmode(void);
 int kbds_drawcursor(void);
 int kbds_getcursor(int *, int *);
 int kbds_keyboardhandler(KeySym, char *, int, int);
+int kbds_is_used_kbds(void);

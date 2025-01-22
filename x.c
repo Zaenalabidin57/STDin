@@ -2667,7 +2667,7 @@ focus(XEvent *ev)
 		return;
 
 	if (ev->type == FocusIn) {
-		if (xw.ime.xic)
+		if (xw.ime.xic && !kbds_is_used_kbds())
 			XSetICFocus(xw.ime.xic);
 		win.mode |= MODE_FOCUSED;
 		xseturgency(0);

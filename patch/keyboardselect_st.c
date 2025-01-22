@@ -480,6 +480,12 @@ kbds_isurlmode(void)
 	return kbds_in_use && (kbds_mode & KBDS_MODE_URL);
 }
 
+int
+kbds_is_used_kbds(void)
+{
+	return kbds_in_use;
+}
+
 void
 kbds_setmode(int mode)
 {
