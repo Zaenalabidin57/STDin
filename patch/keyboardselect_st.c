@@ -84,12 +84,13 @@ static int kbds_mode;
 static int kbds_finddir, kbds_findtill;
 static Rune kbds_findchar;
 static KCursor kbds_c, kbds_oc;
-static CharArray flash_next_char_record, flash_used_label, flash_used_double_label;
-static KCursorArray flash_kcursor_record;
-static RegexKCursorArray regex_kcursor_record;
-static UrlKCursorArray url_kcursor_record;
-static int hit_input_first = 0;
-static Rune hit_input_first_label;
+static CharArray kbds_flash_next_char_record, kbds_flash_used_label, kbds_flash_used_double_label;
+static KCursorArray kbds_flash_kcursor_record;
+static RegexKCursorArray kbds_regex_kcursor_record;
+static UrlKCursorArray kbds_url_kcursor_record;
+static int kbds_hit_input_first = 0;
+static int kbds_is_disabled_ime = 0;
+static Rune kbds_hit_input_first_label;
 
 static const char *flash_key_label[] = {
 	"j", "f", "d", "k", "l", "h", "g", "a", "s", "o",
@@ -174,8 +175,8 @@ insert_regex_kcursor_array(RegexKCursorArray *a, RegexKCursor element) {
 
 void
 reset_regex_kcursor_array(RegexKCursorArray *a) {
-	for (int i = 0; i < regex_kcursor_record.used; i++) {
-		free(regex_kcursor_record.array[i].matched_substring);
+	for (int i = 0; i < kbds_regex_kcursor_record.used; i++) {
+		free(kbds_regex_kcursor_record.array[i].matched_substring);
 	}
 	free(a->array);
 	a->array = NULL;
@@ -236,8 +237,8 @@ reset_kcursor_array(KCursorArray *a) {
 int
 is_in_flash_used_label(Rune label) {
 	int i;
-	for ( i = 0; i < flash_used_label.used; i++) {
-		if (label == flash_used_label.array[i]) {
+	for ( i = 0; i < kbds_flash_used_label.used; i++) {
+		if (label == kbds_flash_used_label.array[i]) {
 			return 1;
 		}
 	}
@@ -247,8 +248,8 @@ is_in_flash_used_label(Rune label) {
 int
 is_in_flash_used_double_label(Rune label) {
 	int i;
-	for ( i = 0; i < flash_used_double_label.used; i++) {
-		if (label == flash_used_double_label.array[i]) {
+	for ( i = 0; i < kbds_flash_used_double_label.used; i++) {
+		if (label == kbds_flash_used_double_label.array[i]) {
 			return 1;
 		}
 	}
@@ -259,8 +260,8 @@ is_in_flash_used_double_label(Rune label) {
 int
 is_in_flash_next_char_record(Rune label) {
 	int i;
-	for ( i = 0; i < flash_next_char_record.used; i++) {
-		if (label == flash_next_char_record.array[i]) {
+	for ( i = 0; i < kbds_flash_next_char_record.used; i++) {
+		if (label == kbds_flash_next_char_record.array[i]) {
 			return 1;
 		}
 	}
@@ -522,17 +523,17 @@ kbds_clearhighlights(void)
 	for (y = (IS_SET(MODE_ALTSCREEN) ? 0 : -term.histf); y < term.row; y++) {
 		line = TLINEABS(y);
 		for (x = 0; x < term.col; x++) {
-			if ((kbds_isurlmode()||kbds_isregexmode()) && line[x].mode & ATTR_FLASH_LABEL && hit_input_first == 1 && is_in_flash_used_label(line[x].u) == 1) {
+			if ((kbds_isurlmode()||kbds_isregexmode()) && line[x].mode & ATTR_FLASH_LABEL && kbds_hit_input_first == 1 && is_in_flash_used_label(line[x].u) == 1) {
 				line[x].mode &= ~ATTR_FLASH_LABEL;
 				u = line[x].u;
 				line[x].u = line[x].ubk;
 				line[x].ubk = u; //backup the first hit label for judge in double hit
 				continue;
 			}
-			if ((kbds_isurlmode()||kbds_isregexmode()) && line[x].mode & ATTR_FLASH_LABEL && hit_input_first == 1 && is_in_flash_used_double_label(line[x].u) == 1 && line[x-1].ubk == hit_input_first_label) {
+			if ((kbds_isurlmode()||kbds_isregexmode()) && line[x].mode & ATTR_FLASH_LABEL && kbds_hit_input_first == 1 && is_in_flash_used_double_label(line[x].u) == 1 && line[x-1].ubk == kbds_hit_input_first_label) {
 				continue;
 			}
-			if(hit_input_first == 0)
+			if(kbds_hit_input_first == 0)
 				line[x].mode &= ~ATTR_HIGHLIGHT;
 			if (line[x].mode & ATTR_FLASH_LABEL) {
 				line[x].mode &= ~ATTR_FLASH_LABEL;
@@ -546,6 +547,7 @@ kbds_clearhighlights(void)
 
 void mark_exit() {
 	kbds_in_use = kbds_quant = 0;
+	kbds_is_disabled_ime = 0;
 	XSetICFocus(xw.ime.xic);
 }
 
@@ -701,13 +703,13 @@ kbds_ismatch(KCursor c)
 		if (zh != NULL) {
 			for(i=0;zh[i] != 0;i++){
 				u = zh[i];
-				insert_char_array(&flash_next_char_record, u);
+				insert_char_array(&kbds_flash_next_char_record, u);
 			}
 		} else {
 			u =  kbds_searchobj.ignorecase ? towlower(m.line[m.x].u) : m.line[m.x].u;
-			insert_char_array(&flash_next_char_record, u);
+			insert_char_array(&kbds_flash_next_char_record, u);
 		}
-		insert_kcursor_array(&flash_kcursor_record, m);
+		insert_kcursor_array(&kbds_flash_kcursor_record, m);
 	}
 
 	return 1;
@@ -721,10 +723,10 @@ kbds_searchall(void)
 	int i, j, is_invalid_label;
 	CharArray valid_label;
 
-	init_char_array(&flash_next_char_record, 1);
+	init_char_array(&kbds_flash_next_char_record, 1);
 	init_char_array(&valid_label, 1);
-	init_char_array(&flash_used_label, 1);
-	init_kcursor_array(&flash_kcursor_record, 1);
+	init_char_array(&kbds_flash_used_label, 1);
+	init_kcursor_array(&kbds_flash_kcursor_record, 1);
 
 	if (!kbds_searchobj.len)
 		return 0;
@@ -741,8 +743,8 @@ kbds_searchall(void)
 
 	for (i = 0; i < LEN(flash_key_label); i++) {
 		is_invalid_label = 0;
-		for ( j = 0; j < flash_next_char_record.used; j++) {
-			if (flash_next_char_record.array[j] == *flash_key_label[i]) {
+		for ( j = 0; j < kbds_flash_next_char_record.used; j++) {
+			if (kbds_flash_next_char_record.array[j] == *flash_key_label[i]) {
 				is_invalid_label = 1;
 				break;
 			}
@@ -752,11 +754,11 @@ kbds_searchall(void)
 		}
 	}
 
-	for ( i = 0; i < flash_kcursor_record.used; i++) {
+	for ( i = 0; i < kbds_flash_kcursor_record.used; i++) {
 		if (i < valid_label.used) {
-			flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].mode |= ATTR_FLASH_LABEL;
-			insert_char_array(&flash_used_label, valid_label.array[i]);
-			flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].u = valid_label.array[i];
+			kbds_flash_kcursor_record.array[i].line[kbds_flash_kcursor_record.array[i].x].mode |= ATTR_FLASH_LABEL;
+			insert_char_array(&kbds_flash_used_label, valid_label.array[i]);
+			kbds_flash_kcursor_record.array[i].line[kbds_flash_kcursor_record.array[i].x].u = valid_label.array[i];
 		}
 	}
 
@@ -798,8 +800,8 @@ int apply_regex_result(KCursor c, RegexResult result) {
 	regex_kcursor.c.line[regex_kcursor.c.x].ubk = regex_kcursor.c.line[regex_kcursor.c.x].u;
 	is_cross_match = 0;
 	// check the match position is cross match
-	for (i = 0; i < regex_kcursor_record.used; i++) {
-		rd = regex_kcursor_record.array[i];
+	for (i = 0; i < kbds_regex_kcursor_record.used; i++) {
+		rd = kbds_regex_kcursor_record.array[i];
 
 		if (regex_kcursor.c.y == rd.c.y && 
 			(regex_kcursor.c.x == rd.c.x || 
@@ -812,12 +814,12 @@ int apply_regex_result(KCursor c, RegexResult result) {
 		}
 
 		// check if the matched string is already in the cache
-		if (enable_regex_same_label && wcscmp(regex_kcursor.matched_substring, regex_kcursor_record.array[i].matched_substring) == 0) {
+		if (enable_regex_same_label && wcscmp(regex_kcursor.matched_substring, kbds_regex_kcursor_record.array[i].matched_substring) == 0) {
 			is_same_value_regex = 1;
 		}		
 	}
 	if (is_cross_match == 0) { // if new position match, record it
-		insert_regex_kcursor_array(&regex_kcursor_record, regex_kcursor);
+		insert_regex_kcursor_array(&kbds_regex_kcursor_record, regex_kcursor);
 	} else {
 		free(regex_kcursor.matched_substring);
 	}
@@ -969,9 +971,9 @@ kbds_search_regex(void)
 	int label_need = 0;
 	int new_count = 0;
 
-	init_char_array(&flash_used_label, 1);
-	init_char_array(&flash_used_double_label, 1);
-	init_regex_kcursor_array(&regex_kcursor_record, 1);
+	init_char_array(&kbds_flash_used_label, 1);
+	init_char_array(&kbds_flash_used_double_label, 1);
+	init_regex_kcursor_array(&kbds_regex_kcursor_record, 1);
 
 	// read a full line to match regex
 	for (c.y = 0; c.y <= term.row - 1; c.y++) {
@@ -990,7 +992,7 @@ kbds_search_regex(void)
 	char label1, label2;
 
 	// assign label to the matched string
-	for ( i = 0; i < regex_kcursor_record.used; i++) {
+	for ( i = 0; i < kbds_regex_kcursor_record.used; i++) {
 		// Check whether the label is used up
 		if (label_need > LEN(flash_key_label) - 1 && count >= LEN(flash_double_key_label)) {
 			break;
@@ -1000,8 +1002,8 @@ kbds_search_regex(void)
 
 		is_exists_str = 0;
 
-		label_pos1 = &regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x];
-		label_pos2 = &regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x + 1];
+		label_pos1 = &kbds_regex_kcursor_record.array[i].c.line[kbds_regex_kcursor_record.array[i].c.x];
+		label_pos2 = &kbds_regex_kcursor_record.array[i].c.line[kbds_regex_kcursor_record.array[i].c.x + 1];
 		label1 = flash_double_key_label[count][0];
 		label2 = flash_double_key_label[count][1];
 
@@ -1013,15 +1015,15 @@ kbds_search_regex(void)
 				label_pos2->mode |= ATTR_FLASH_LABEL;
 				label_pos2->ubk = label_pos2->u;
 				label_pos2->u = label2;
-				insert_char_array(&flash_used_label, label1);
-				insert_char_array(&flash_used_double_label, label2);
+				insert_char_array(&kbds_flash_used_label, label1);
+				insert_char_array(&kbds_flash_used_double_label, label2);
 				count++;
 				continue;
 			} else { // single label
 				label_pos1->mode |= ATTR_FLASH_LABEL;
 				label_pos1->ubk = label_pos1->u;
 				label_pos1->u = *flash_key_label[count];
-				insert_char_array(&flash_used_label, *flash_key_label[count]);
+				insert_char_array(&kbds_flash_used_label, *flash_key_label[count]);
 				count++;
 				continue;
 			}
@@ -1030,7 +1032,7 @@ kbds_search_regex(void)
 		for (int j = 0; j < i; j++) { // check if the matched string is already in the cache
 			if (enable_regex_same_label == 0)
 				break;
-			if(wcscmp(regex_kcursor_record.array[i].matched_substring,regex_kcursor_record.array[j].matched_substring) == 0) {
+			if(wcscmp(kbds_regex_kcursor_record.array[i].matched_substring,kbds_regex_kcursor_record.array[j].matched_substring) == 0) {
 				is_exists_str = 1;
 				is_exists_str_index = j;
 				break;
@@ -1038,8 +1040,8 @@ kbds_search_regex(void)
 		}
 
 		// record the first hit pos of the same url
-		same_value_pos1 = &regex_kcursor_record.array[is_exists_str_index].c.line[regex_kcursor_record.array[is_exists_str_index].c.x];
-		same_value_pos2 = &regex_kcursor_record.array[is_exists_str_index].c.line[regex_kcursor_record.array[is_exists_str_index].c.x+1];
+		same_value_pos1 = &kbds_regex_kcursor_record.array[is_exists_str_index].c.line[kbds_regex_kcursor_record.array[is_exists_str_index].c.x];
+		same_value_pos2 = &kbds_regex_kcursor_record.array[is_exists_str_index].c.line[kbds_regex_kcursor_record.array[is_exists_str_index].c.x+1];
 
 
 		if(label_need > LEN(flash_key_label) - 1) {  // double label
@@ -1051,8 +1053,8 @@ kbds_search_regex(void)
 			if (is_exists_str == 0) { // new value match, use new label
 				label_pos1->u = label1;
 				label_pos2->u = label2;
-				insert_char_array(&flash_used_label, label1);
-				insert_char_array(&flash_used_double_label, label2);
+				insert_char_array(&kbds_flash_used_label, label1);
+				insert_char_array(&kbds_flash_used_double_label, label2);
 				count++;
 			} else { // same value match, use same label of the first hit
 				label_pos1->u = same_value_pos1->u;
@@ -1064,7 +1066,7 @@ kbds_search_regex(void)
 			label_pos1->u = *flash_key_label[count];
 			if (is_exists_str == 0) { // new value match, use new label
 				label_pos1->u = *flash_key_label[count];
-				insert_char_array(&flash_used_label, *flash_key_label[count]);
+				insert_char_array(&kbds_flash_used_label, *flash_key_label[count]);
 				count++;
 			} else { // same value match, use same label of the first hit
 				label_pos1->u = same_value_pos1->u;
@@ -1074,18 +1076,18 @@ kbds_search_regex(void)
 
 	// highlight the matched string
 	KCursor temp_c;
-	for ( i = 0; i < regex_kcursor_record.used;i++) {
-		temp_c.y = regex_kcursor_record.array[i].c.y;
+	for ( i = 0; i < kbds_regex_kcursor_record.used;i++) {
+		temp_c.y = kbds_regex_kcursor_record.array[i].c.y;
 		temp_c.line = TLINE(temp_c.y);
 		temp_c.len = tlinelen(temp_c.line);
-		temp_c.x = regex_kcursor_record.array[i].c.x;
-		for ( j = 0; j < regex_kcursor_record.array[i].len; j++) {
+		temp_c.x = kbds_regex_kcursor_record.array[i].c.x;
+		for ( j = 0; j < kbds_regex_kcursor_record.array[i].len; j++) {
 			temp_c.line[temp_c.x].mode |= ATTR_HIGHLIGHT;
 			kbds_moveforward(&temp_c, 1, KBDS_WRAP_LINE);
 		}
 	}
 
-	hit_input_first = 0; // begin hit first label
+	kbds_hit_input_first = 0; // begin hit first label
 	tfulldirt();
 
 	return count;
@@ -1114,9 +1116,9 @@ kbds_search_url(void)
 	int hit_url_y;
 	unsigned int label_need = 0;
 
-	init_char_array(&flash_used_label, 1);
-	init_char_array(&flash_used_double_label, 1);
-	init_url_kcursor_array(&url_kcursor_record, 1);
+	init_char_array(&kbds_flash_used_label, 1);
+	init_char_array(&kbds_flash_used_double_label, 1);
+	init_url_kcursor_array(&kbds_url_kcursor_record, 1);
 
 	for (c.y = 0; c.y <= term.row - 1; c.y++) {
 		c.line = TLINE(c.y);
@@ -1143,10 +1145,10 @@ kbds_search_url(void)
 				if (url) {
 					is_exists_url = 0;
 					// check if the url is already in the cache
-					for (h = 0; h < url_kcursor_record.used; h++) {
+					for (h = 0; h < kbds_url_kcursor_record.used; h++) {
 						if (enable_url_same_label == 0) // if disable same label
 							break;
-						if (strcmp(url_kcursor_record.array[h].url, url) == 0) {
+						if (strcmp(kbds_url_kcursor_record.array[h].url, url) == 0) {
 							is_exists_url = 1;
 							repeat_exists_url_index = h;
 							break;
@@ -1163,7 +1165,7 @@ kbds_search_url(void)
 					m.len = tlinelen(m.line);
 					url_kcursor.c = m;
 					url_kcursor.url = strdup(url);
-					insert_url_kcursor_array(&url_kcursor_record, url_kcursor);
+					insert_url_kcursor_array(&kbds_url_kcursor_record, url_kcursor);
 				}
 				// reset to match the next url
 				head = 0;
@@ -1177,7 +1179,7 @@ kbds_search_url(void)
 	char label1, label2;
 
 	// assign label to the matched url
-	for ( i = 0; i < url_kcursor_record.used; i++) {
+	for ( i = 0; i < kbds_url_kcursor_record.used; i++) {
 		// Check whether the label is used up
 		if (label_need > LEN(flash_key_label) - 1 && count >= LEN(flash_double_key_label)) {
 			break;
@@ -1186,8 +1188,8 @@ kbds_search_url(void)
 		}
 
 		is_exists_url = 0;
-		label_pos1 = &url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x];
-		label_pos2 = &url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x + 1];
+		label_pos1 = &kbds_url_kcursor_record.array[i].c.line[kbds_url_kcursor_record.array[i].c.x];
+		label_pos2 = &kbds_url_kcursor_record.array[i].c.line[kbds_url_kcursor_record.array[i].c.x + 1];
 		label1 = flash_double_key_label[count][0];
 		label2 = flash_double_key_label[count][1];
 
@@ -1199,15 +1201,15 @@ kbds_search_url(void)
 				label_pos2->mode |= ATTR_FLASH_LABEL;
 				label_pos2->ubk = label_pos2->u;
 				label_pos2->u = label2;
-				insert_char_array(&flash_used_label, label1);
-				insert_char_array(&flash_used_double_label, label2);
+				insert_char_array(&kbds_flash_used_label, label1);
+				insert_char_array(&kbds_flash_used_double_label, label2);
 				count++;
 				continue;
 			} else { // single label
 				label_pos1->mode |= ATTR_FLASH_LABEL;
 				label_pos1->ubk = label_pos1->u;
 				label_pos1->u = *flash_key_label[count];
-				insert_char_array(&flash_used_label, *flash_key_label[count]);
+				insert_char_array(&kbds_flash_used_label, *flash_key_label[count]);
 				count++;
 				continue;
 			}
@@ -1217,7 +1219,7 @@ kbds_search_url(void)
 		for (h = 0; h < i; h++) {
 			if (enable_url_same_label == 0)
 				break;
-			if (strcmp(url_kcursor_record.array[h].url, url_kcursor_record.array[i].url) == 0) {
+			if (strcmp(kbds_url_kcursor_record.array[h].url, kbds_url_kcursor_record.array[i].url) == 0) {
 				is_exists_url = 1;
 				repeat_exists_url_index = h; // record the index of the first hit
 				break;
@@ -1225,8 +1227,8 @@ kbds_search_url(void)
 		}
 
 		// record the first hit pos of the same url
-		same_value_pos1 = &url_kcursor_record.array[repeat_exists_url_index].c.line[url_kcursor_record.array[repeat_exists_url_index].c.x];
-		same_value_pos2 = &url_kcursor_record.array[repeat_exists_url_index].c.line[url_kcursor_record.array[repeat_exists_url_index].c.x+1];
+		same_value_pos1 = &kbds_url_kcursor_record.array[repeat_exists_url_index].c.line[kbds_url_kcursor_record.array[repeat_exists_url_index].c.x];
+		same_value_pos2 = &kbds_url_kcursor_record.array[repeat_exists_url_index].c.line[kbds_url_kcursor_record.array[repeat_exists_url_index].c.x+1];
 
 		if(label_need > LEN(flash_key_label) - 1) {  // double label
 			label_pos1->mode |= ATTR_FLASH_LABEL;
@@ -1237,8 +1239,8 @@ kbds_search_url(void)
 			if (is_exists_url == 0) { // new value match, use new label
 				label_pos1->u = label1;
 				label_pos2->u = label2;
-				insert_char_array(&flash_used_label, label1);
-				insert_char_array(&flash_used_double_label, label2);
+				insert_char_array(&kbds_flash_used_label, label1);
+				insert_char_array(&kbds_flash_used_double_label, label2);
 				count++;
 			} else { // same value match, use same label of the first hit
 				label_pos1->u = same_value_pos1->u;
@@ -1250,7 +1252,7 @@ kbds_search_url(void)
 			label_pos1->u = *flash_key_label[count];
 			if (is_exists_url == 0) { // new value match, use new label
 				label_pos1->u = *flash_key_label[count];
-				insert_char_array(&flash_used_label, *flash_key_label[count]);
+				insert_char_array(&kbds_flash_used_label, *flash_key_label[count]);
 				count++;
 			} else { // same value match, use same label of the first hit
 				label_pos1->u = same_value_pos1->u;
@@ -1258,7 +1260,7 @@ kbds_search_url(void)
 		}
 	}
 
-	hit_input_first = 0; // begin hit first label
+	kbds_hit_input_first = 0; // begin hit first label
 	tfulldirt();
 
 	return count;
@@ -1270,75 +1272,75 @@ jump_to_label(Rune label, int len) {
 	int move_x = 0;
 
 	// double label hit
-	if (kbds_isurlmode() && flash_used_double_label.used > 0) {
-		for ( i = 0; i < url_kcursor_record.used; i++) {
+	if (kbds_isurlmode() && kbds_flash_used_double_label.used > 0) {
+		for ( i = 0; i < kbds_url_kcursor_record.used; i++) {
 			// hit first label
-			if (hit_input_first == 0 && label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x].u) {
-				hit_input_first = 1;
-				hit_input_first_label = label;
+			if (kbds_hit_input_first == 0 && label == kbds_url_kcursor_record.array[i].c.line[kbds_url_kcursor_record.array[i].c.x].u) {
+				kbds_hit_input_first = 1;
+				kbds_hit_input_first_label = label;
 				return;
 			}
 			// hit second label
-			if (hit_input_first == 1 && hit_input_first_label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x].ubk && label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x + 1].u) {
-				hit_input_first = 0;
+			if (kbds_hit_input_first == 1 && kbds_hit_input_first_label == kbds_url_kcursor_record.array[i].c.line[kbds_url_kcursor_record.array[i].c.x].ubk && label == kbds_url_kcursor_record.array[i].c.line[kbds_url_kcursor_record.array[i].c.x + 1].u) {
+				kbds_hit_input_first = 0;
 				kbds_clearhighlights();
-				openUrlOnClick(url_kcursor_record.array[i].c.x, url_kcursor_record.array[i].c.y, url_opener);
+				openUrlOnClick(kbds_url_kcursor_record.array[i].c.x, kbds_url_kcursor_record.array[i].c.y, url_opener);
 				return;
 			}
 		}
 	} else if (kbds_isurlmode()) { // single label hit
-		for ( i = 0; i < url_kcursor_record.used; i++) {
-			if (label == url_kcursor_record.array[i].c.line[url_kcursor_record.array[i].c.x].u) {
+		for ( i = 0; i < kbds_url_kcursor_record.used; i++) {
+			if (label == kbds_url_kcursor_record.array[i].c.line[kbds_url_kcursor_record.array[i].c.x].u) {
 				kbds_clearhighlights();
-				hit_input_first = 0;
-				openUrlOnClick(url_kcursor_record.array[i].c.x, url_kcursor_record.array[i].c.y, url_opener);
+				kbds_hit_input_first = 0;
+				openUrlOnClick(kbds_url_kcursor_record.array[i].c.x, kbds_url_kcursor_record.array[i].c.y, url_opener);
 				return;
 			}
 		}
 	}
 
 	// double label hit
-	if (kbds_isregexmode() && flash_used_double_label.used > 0) {
-		for ( i = 0; i < regex_kcursor_record.used; i++) {
+	if (kbds_isregexmode() && kbds_flash_used_double_label.used > 0) {
+		for ( i = 0; i < kbds_regex_kcursor_record.used; i++) {
 			// hit first label
-			if (hit_input_first == 0 && label == regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x].u) {
-				hit_input_first = 1;
-				hit_input_first_label = label;
+			if (kbds_hit_input_first == 0 && label == kbds_regex_kcursor_record.array[i].c.line[kbds_regex_kcursor_record.array[i].c.x].u) {
+				kbds_hit_input_first = 1;
+				kbds_hit_input_first_label = label;
 				return;
 			}
 			// hit second label
-			if (hit_input_first == 1 && hit_input_first_label == regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x].ubk && label == regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x + 1].u) {
-				hit_input_first = 0;
+			if (kbds_hit_input_first == 1 && kbds_hit_input_first_label == kbds_regex_kcursor_record.array[i].c.line[kbds_regex_kcursor_record.array[i].c.x].ubk && label == kbds_regex_kcursor_record.array[i].c.line[kbds_regex_kcursor_record.array[i].c.x + 1].u) {
+				kbds_hit_input_first = 0;
 				kbds_clearhighlights();
-				copy_regex_result(regex_kcursor_record.array[i].matched_substring);
+				copy_regex_result(kbds_regex_kcursor_record.array[i].matched_substring);
 				return;
 			}
 		}
 	} else if (kbds_isregexmode()) { // single label hit
-		for ( i = 0; i < regex_kcursor_record.used; i++) {
-			if (label == regex_kcursor_record.array[i].c.line[regex_kcursor_record.array[i].c.x].u) {
+		for ( i = 0; i < kbds_regex_kcursor_record.used; i++) {
+			if (label == kbds_regex_kcursor_record.array[i].c.line[kbds_regex_kcursor_record.array[i].c.x].u) {
 				kbds_clearhighlights();
-				hit_input_first = 0;
-				copy_regex_result(regex_kcursor_record.array[i].matched_substring);
+				kbds_hit_input_first = 0;
+				copy_regex_result(kbds_regex_kcursor_record.array[i].matched_substring);
 				return;
 			}
 		}
 	}
 
-	for ( i = 0; i < flash_kcursor_record.used; i++) {
-		if (label == flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].u) {
-			if ((flash_kcursor_record.array[i].x == flash_kcursor_record.array[i].len -2 && flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x+1].mode & ATTR_WDUMMY) || (flash_kcursor_record.array[i].x == flash_kcursor_record.array[i].len -1) && flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].mode & ATTR_HIGHLIGHT && flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x].mode & ATTR_FLASH_LABEL) {
+	for ( i = 0; i < kbds_flash_kcursor_record.used; i++) {
+		if (label == kbds_flash_kcursor_record.array[i].line[kbds_flash_kcursor_record.array[i].x].u) {
+			if ((kbds_flash_kcursor_record.array[i].x == kbds_flash_kcursor_record.array[i].len -2 && kbds_flash_kcursor_record.array[i].line[kbds_flash_kcursor_record.array[i].x+1].mode & ATTR_WDUMMY) || (kbds_flash_kcursor_record.array[i].x == kbds_flash_kcursor_record.array[i].len -1) && kbds_flash_kcursor_record.array[i].line[kbds_flash_kcursor_record.array[i].x].mode & ATTR_HIGHLIGHT && kbds_flash_kcursor_record.array[i].line[kbds_flash_kcursor_record.array[i].x].mode & ATTR_FLASH_LABEL) {
 				len = len - 1;
 			}
 			for (j=1;j<=len;j++){
 
-				if (flash_kcursor_record.array[i].line[flash_kcursor_record.array[i].x-j].u >=  0x80)
+				if (kbds_flash_kcursor_record.array[i].line[kbds_flash_kcursor_record.array[i].x-j].u >=  0x80)
 				 move_x = move_x + 3; //中文要移动三个位置
 				else
 				 move_x = move_x + 1;
 			}
 
-			kbds_moveto(flash_kcursor_record.array[i].x-move_x, flash_kcursor_record.array[i].y);
+			kbds_moveto(kbds_flash_kcursor_record.array[i].x-move_x, kbds_flash_kcursor_record.array[i].y);
 			return;
 		}
 	}
@@ -1346,25 +1348,25 @@ jump_to_label(Rune label, int len) {
 
 void
 clear_flash_cache() {
-	reset_char_array(&flash_next_char_record);
-	reset_char_array(&flash_used_label);
-	reset_kcursor_array(&flash_kcursor_record);
+	reset_char_array(&kbds_flash_next_char_record);
+	reset_char_array(&kbds_flash_used_label);
+	reset_kcursor_array(&kbds_flash_kcursor_record);
 }
 
 void
 clear_regex_cache() {
-	hit_input_first = 0;
-	reset_regex_kcursor_array(&regex_kcursor_record);
-	reset_char_array(&flash_used_label);
-	reset_char_array(&flash_used_double_label);
+	kbds_hit_input_first = 0;
+	reset_regex_kcursor_array(&kbds_regex_kcursor_record);
+	reset_char_array(&kbds_flash_used_label);
+	reset_char_array(&kbds_flash_used_double_label);
 }
 
 void
 clear_url_cache() {
-	hit_input_first = 0;
-	reset_url_kcursor_array(&url_kcursor_record);
-	reset_char_array(&flash_used_label);
-	reset_char_array(&flash_used_double_label);
+	kbds_hit_input_first = 0;
+	reset_url_kcursor_array(&kbds_url_kcursor_record);
+	reset_char_array(&kbds_flash_used_label);
+	reset_char_array(&kbds_flash_used_double_label);
 }
 
 void
@@ -1552,7 +1554,10 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 	Rune u;
 
 	// Disable IME
-	XUnsetICFocus(xw.ime.xic);
+	if(!kbds_is_disabled_ime) {
+		kbds_is_disabled_ime = 1;
+		XUnsetICFocus(xw.ime.xic);
+	}
 
 	if (kbds_isurlmode() && !forcequit) {
 		switch (ksym) {
@@ -1569,9 +1574,9 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 		default:
 			if (len > 0) {
 				utf8decode(buf, &u, len);
-				if ((is_in_flash_used_label(u) == 1 && hit_input_first == 0) || (is_in_flash_used_double_label(u) == 1 && hit_input_first == 1)) {
+				if ((is_in_flash_used_label(u) == 1 && kbds_hit_input_first == 0) || (is_in_flash_used_double_label(u) == 1 && kbds_hit_input_first == 1)) {
 					jump_to_label(u, kbds_searchobj.len);
-					if (hit_input_first == 1) {
+					if (kbds_hit_input_first == 1) {
 						kbds_clearhighlights();
 						return 0;
 					}
@@ -1606,9 +1611,9 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 		default:
 			if (len > 0) {
 				utf8decode(buf, &u, len);
-				if ((is_in_flash_used_label(u) == 1 && hit_input_first == 0) || (is_in_flash_used_double_label(u) == 1 && hit_input_first == 1)) {
+				if ((is_in_flash_used_label(u) == 1 && kbds_hit_input_first == 0) || (is_in_flash_used_double_label(u) == 1 && kbds_hit_input_first == 1)) {
 					jump_to_label(u, kbds_searchobj.len);
-					if (hit_input_first == 1) {
+					if (kbds_hit_input_first == 1) {
 						kbds_clearhighlights();
 						return 0;
 					}
