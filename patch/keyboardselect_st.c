@@ -540,7 +540,13 @@ kbds_clearhighlights(void)
 			}
 		}
 	}
+
 	tfulldirt();
+}
+
+void mark_exit() {
+	kbds_in_use = kbds_quant = 0;
+	XSetICFocus(xw.ime.xic);
 }
 
 void
@@ -1545,6 +1551,9 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 	Line line;
 	Rune u;
 
+	// Disable IME
+	XUnsetICFocus(xw.ime.xic);
+
 	if (kbds_isurlmode() && !forcequit) {
 		switch (ksym) {
 		case XK_Escape:
@@ -1569,9 +1578,9 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 					kbds_searchobj.len = 0;
 					kbds_setmode(kbds_mode & ~KBDS_MODE_URL);
 					clear_url_cache();
-					kbds_clearhighlights();
 					kbds_selecttext();
-					kbds_in_use = kbds_quant = 0;
+					mark_exit();
+					kbds_clearhighlights();
 					free(kbds_searchobj.str);
 					return MODE_KBDSELECT;
 				} else {
@@ -1606,9 +1615,9 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 					kbds_searchobj.len = 0;
 					kbds_setmode(kbds_mode & ~KBDS_MODE_REGEX);
 					clear_regex_cache();
-					kbds_clearhighlights();
 					kbds_selecttext();
-					kbds_in_use = kbds_quant = 0;
+					mark_exit();
+					kbds_clearhighlights();
 					free(kbds_searchobj.str);
 					return MODE_KBDSELECT;
 				} else {
@@ -1887,7 +1896,7 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 	case XK_Return:
 		if (kbds_isselectmode())
 			kbds_copytoclipboard();
-		kbds_in_use = kbds_quant = 0;
+		mark_exit();
 		free(kbds_searchobj.str);
 		kscrolldown(&((Arg){ .i = term.histf }));
 		kbds_clearhighlights();
