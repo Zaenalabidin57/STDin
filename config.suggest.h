@@ -37,6 +37,8 @@ char *pattern_list[] = {
     "(Qm[0-9a-zA-Z]{44})",
     // SHA hash
     "([0-9a-f]{7,40})",
+	// git token
+	"(ghp_[0-9a-zA-Z]{36})",
     // IPv4 address
     "(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})",
     // IPv6 address
