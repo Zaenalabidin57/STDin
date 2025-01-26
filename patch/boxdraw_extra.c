@@ -34,7 +34,7 @@ be_generatesymbols(BDBuffer *buf, int bold)
 	static int errorsent;
 	const unsigned char *bde = boxdataextra;
 	BDBuffer ssbuf;
-	int cx, cy;
+	int i, cx, cy;
 	int mwh = MIN(win.cw, win.ch);
 	int base_lw = MAX(1, DIV(mwh, 8));
 	int lw = (bold && mwh >= 6) ? MAX(base_lw + 1, DIV(3 * base_lw, 2)) : base_lw;
