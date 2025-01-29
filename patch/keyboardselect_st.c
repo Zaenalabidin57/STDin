@@ -552,7 +552,8 @@ kbds_clearhighlights(void)
 
 void mark_exit() {
 	kbds_in_use = kbds_quant = 0;
-	XSetICFocus(xw.ime.xic);
+	if(xw.ime.xic)
+		XSetICFocus(xw.ime.xic);
 }
 
 void
@@ -1786,7 +1787,8 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 		kbds_oc = kbds_c;
 		kbds_setmode(KBDS_MODE_MOVE);
 		// Disable IME
-		XUnsetICFocus(xw.ime.xic);
+		if(xw.ime.xic)
+			XUnsetICFocus(xw.ime.xic);
 		return MODE_KBDSELECT;
 	case XK_V:
 		if (kbds_mode & KBDS_MODE_LSELECT) {
