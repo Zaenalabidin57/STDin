@@ -26,7 +26,7 @@ char *pattern_list[] = {
     // Diff b
     "(\\+\\+\\+ b/(\\S+))",
     // Docker
-    "(sha256:([0-9a-f]{64}))",
+    "sha256:([0-9a-f]{64})",
     // File path
 	"((?:[.\\pL\\pN_\\-@~]+)?(?:/+[.\\pL\\pN_\\-@]+)+)",
     // Color hex code
@@ -47,6 +47,7 @@ char *pattern_list[] = {
     "(0x[0-9a-fA-F]+)",
     // Number (at least 4 digits)
     "([0-9]{4,})",
+    "(core-[0-9a-z]+-[0-9a-z]+)",
 
 	NULL 
 };
