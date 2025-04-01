@@ -19,6 +19,8 @@ char *pattern_list[] = {
     "\\[[^]]*\\]\\(([^)]+)\\)",
     // URL
     "((?:https?://|git@|git://|ssh://|ftp://|file://)\\S+)",
+  // coredumep
+    "(core-[a-z-]+-[0-9]+-[0-9]+)",
 	// email
 	"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})",
     // Diff a
