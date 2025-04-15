@@ -5,7 +5,7 @@
  *
  * font: see http://freedesktop.org/software/fontconfig/fontconfig-user.html
  */
-static char *font = "Maple Mono NF CN:style=Medium:pixelsize=27:antialias=true:autohint=true";
+static char *font = "Maple Mono NF CN:style=Medium:size=14:antialias=true:autohint=true";
 /* Spare fonts */
 static char *font2[] = {
 	"Source Han Sans CN:pixelsize=27:style=Bold:antialias=true:autohint=true",
@@ -19,8 +19,6 @@ char *pattern_list[] = {
     "\\[[^]]*\\]\\(([^)]+)\\)",
     // URL
     "((?:https?://|git@|git://|ssh://|ftp://|file://)\\S+)",
-  // coredumep
-    "(core-[a-z-]+-[0-9]+-[0-9]+)",
 	// email
 	"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})",
     // Diff a
@@ -31,6 +29,7 @@ char *pattern_list[] = {
     "sha256:([0-9a-f]{64})",
     // File path
 	"((?:[.\\pL\\pN_\\-@~]+)?(?:/+[.\\pL\\pN_\\-@]+)+)",
+    "(core-[0-9a-z]+-[0-9a-z]+-[0-9a-z]+)",
     // Color hex code
     "(#[0-9a-fA-F]{6})",
     // UUID
@@ -49,7 +48,6 @@ char *pattern_list[] = {
     "(0x[0-9a-fA-F]+)",
     // Number (at least 4 digits)
     "([0-9]{4,})",
-    "(core-[0-9a-z]+-[0-9a-z]+)",
 
 	NULL 
 };
@@ -317,6 +315,9 @@ unsigned int hyperlinkhintbg = 258;
 unsigned int kbselectfg = 0;
 unsigned int kbselectbg = 258;
 
+/* Foreground color for the scrollback indicator */
+unsigned int scrollbackindicatorfg = 258;
+
 /* Bold text is not rendered in bright color. 0: off, 1: on */
 unsigned int bold_is_not_bright = 1;
 
@@ -379,6 +380,10 @@ unsigned int hyperlinkcache_pri = 8192;
 /* Specifies how many hyperlinks can be cached on the alternate screen.
  * Default value is 1024, maximum value is 65536. */
 unsigned int hyperlinkcache_alt = 1024;
+
+/* Show a scrollback indicator on the right edge of the screen to indicate how far
+ * you have scrolled. 0: off, 1: on, 2: only when keyboard selection mode is on */
+unsigned int scrollbackindicator = 1;
 
 /*
  * Default colour and shape of the mouse cursor
@@ -797,6 +802,7 @@ ResourcePref resources[] = {
 		{ "hyperlinkhintfg",     INTEGER, &hyperlinkhintfg },
 		{ "hyperlinkhintbg",     INTEGER, &hyperlinkhintbg },
 		{ "kbselectfg",          INTEGER, &kbselectfg },
+		{ "scrollbackindicatorfg", INTEGER, &scrollbackindicatorfg },
 		{ "kbselectbg",          INTEGER, &kbselectbg },
 		{ "bold_is_not_bright",  INTEGER, &bold_is_not_bright },
 		{ "dynamic_cursor_color",INTEGER, &dynamic_cursor_color },
@@ -846,4 +852,5 @@ ResourcePref resources[] = {
 		{ "undercurl_height_scale",        FLOAT,   &undercurl_height_scale },
 		{ "autoscrolltimeout",             INTEGER, &autoscrolltimeout },
 		{ "autoscrollacceleration",        FLOAT,   &autoscrollacceleration },
+		{ "scrollbackindicator",           INTEGER, &scrollbackindicator },
 };
