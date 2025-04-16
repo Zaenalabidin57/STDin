@@ -2056,7 +2056,7 @@ xdrawglyphfontspecs(const XftGlyphFontSpec *specs, GlyphFontSeq *seq, int y, int
 void
 xdrawglyph(Glyph *g, int x, int y)
 {
-	int numspecs, numseqs, charlen = (g->mode & ATTR_WIDE) ? 2 : 1;
+	int charlen = (g->mode & ATTR_WIDE) ? 2 : 1;
 	XRectangle r = {
 		.x = borderpx + x * win.cw,
 		.y = borderpx + y * win.ch,
@@ -2816,6 +2816,8 @@ kpress(XEvent *ev)
 		len = XLookupString(e, buf, sizeof buf, &ksym, NULL);
 	}
 
+	screen = tisaltscr() ? S_ALT : S_PRI;
+
 	if (IS_SET(MODE_KBDSELECT)) {
 		if (kbds_issearchmode()) {
 			for (bp = shortcuts; bp < shortcuts + LEN(shortcuts); bp++) {
@@ -2832,8 +2834,6 @@ kpress(XEvent *ev)
 			win.mode ^= kbds_keyboardhandler(ksym, buf, len, 0);
 		return;
 	}
-
-	screen = tisaltscr() ? S_ALT : S_PRI;
 
 	/* 1. shortcuts */
 	for (bp = shortcuts; bp < shortcuts + LEN(shortcuts); bp++) {
