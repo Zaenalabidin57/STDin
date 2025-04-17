@@ -14,8 +14,11 @@ vi  mode keybind refer to
 
 [keybind in vi mode](https://github.com/DreamMaoMao/st-fl/blob/main/keyboardselect.txt)
 
-
-
+# if you want use my config, do this before build
+``` bash
+# need fonts `Maple Mono NF CN`
+cp config.suggest.h config.h
+```
 
 https://github.com/user-attachments/assets/1176b964-3ecb-4ed5-ba26-9b1664ecf301
 
