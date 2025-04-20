@@ -186,10 +186,10 @@ int ligatures = 1;
  * 0: disable (render all U25XX glyphs normally from the font).
  */
 int boxdraw = 0;
-int boxdraw_bold = 0;
+int boxdraw_bold = 1;
 
 /* braille (U28XX):  1: render as adjacent "pixels",  0: use font */
-int boxdraw_braille = 0;
+int boxdraw_braille = 1;
 
 /* extra: if enabled, render dashes/diagonals and proper rounded corners.
  *        (boxdraw has to be enabled as well) */
@@ -267,7 +267,7 @@ static const char *colorname[] = {
 	"#e70c0c", // red
 	"#8ae234", // green
 	"#de990e", // yellow
-	"#de990e", // blue
+	"#5F5FFF", // blue
 	"#d17ae5", // magenta/purple
 	"#83df27", // cyan
 	"#eeedec", // white
