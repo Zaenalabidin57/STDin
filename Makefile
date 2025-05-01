@@ -45,7 +45,8 @@ install: st
 	mkdir -p $(DESTDIR)$(MANPREFIX)/man1
 	sed "s/VERSION/$(VERSION)/g" < st.1 > $(DESTDIR)$(MANPREFIX)/man1/st.1
 	chmod 644 $(DESTDIR)$(MANPREFIX)/man1/st.1
-	tic -sx st.info
+	mkdir -p $(DESTDIR)$(PREFIX)/share/st/terminfo
+	tic -sx -o $(DESTDIR)$(PREFIX)/share/st/terminfo st.info
 	mkdir -p $(DESTDIR)$(PREFIX)/share/applications # desktop-entry patch
 	test -f ${DESTDIR}${PREFIX}/share/applications/st.desktop || cp -n st.desktop $(DESTDIR)$(PREFIX)/share/applications # desktop-entry patch
 	mkdir -p $(DESTDIR)$(ICONPREFIX)
