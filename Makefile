@@ -50,7 +50,7 @@ install: st
 	mkdir -p $(DESTDIR)$(PREFIX)/share/st/terminfo
 	tic -sx -o $(DESTDIR)$(PREFIX)/share/st/terminfo st.info
 	mkdir -p $(DESTDIR)$(PREFIX)/share/applications # desktop-entry patch
-	test -f ${DESTDIR}${PREFIX}/share/applications/st.desktop || cp -n st.desktop $(DESTDIR)$(PREFIX)/share/applications # desktop-entry patch
+	cp -f st.desktop $(DESTDIR)$(PREFIX)/share/applications # desktop-entry patch
 	mkdir -p $(DESTDIR)$(ICONPREFIX)
 	test -f $(ICONNAME) && test ! -f $(DESTDIR)$(ICONPREFIX)/$(ICONNAME) && cp -f $(ICONNAME) $(DESTDIR)$(ICONPREFIX) || :
 	@echo Please see the README file regarding the terminfo entry of st.
