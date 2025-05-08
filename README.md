@@ -20,6 +20,10 @@ vi  mode keybind refer to
 cp config.suggest.h config.h
 ```
 
+or if you use arch, you can directly install from AUR
+``` bash
+yay -S st-fl-git
+
 https://github.com/user-attachments/assets/1176b964-3ecb-4ed5-ba26-9b1664ecf301
 
 
