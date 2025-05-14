@@ -115,7 +115,7 @@ int vertcenter = 0;
 wchar_t *worddelimiters = L" ";
 
 /* Word delimiters for short and long jumps in the keyboard select patch */
-wchar_t *kbds_sdelim = L"!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~ ";
+wchar_t *kbds_sdelim = L"!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~ ，、。；：？！「」『』（）【】《》〈〉〔〕…—～‧";
 wchar_t *kbds_ldelim = L" ";
 
 /* selection timeouts (in milliseconds) */
