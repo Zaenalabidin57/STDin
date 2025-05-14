@@ -180,6 +180,16 @@ int ligatures = 1;
 #define DISABLE_LIGATURES 0
 
 /*
+ * Font features for ligatures.
+ * Populate the array with a list of font features, wrapped in FEATURE macro,
+ * e. g.
+ * FEATURE('c', 'a', 'l', 't'), FEATURE('d', 'l', 'i', 'g')
+ */
+#if !DISABLE_LIGATURES
+hb_feature_t hbfeatures[] = { };
+#endif
+
+/*
  * 1: render most of the lines/blocks characters without using the font for
  *    perfect alignment between cells (U2500 - U259F except dashes/diagonals).
  *    Bold affects lines thickness if boxdraw_bold is not 0. Italic is ignored.
