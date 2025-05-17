@@ -9,12 +9,19 @@
 //static char *font2[] = { "JetBrainsMono Nerd Font :pixelsize=15:antialias=true:autohint=true" };
 //static char *font2[] = { "FreeMono:style=Regular:pixelsize=15:antialias=true:autohint=true" };
 //static char *font =  "FreeMono:style=Regular:pixelsize=15:antialias=true:autohint=true" ;
-//static char *font2[] = { "FreeMono:style=Regular:pixelsize=13:antialias=true:autohint=true" };
+static char *font2[] = { "FreeMono:style=Regular:pixelsize=13:antialias=true:autohint=true" };
 //static char *font =  "FreeMono:style=Regular:pixelsize=13:antialias=true:autohint=true" ;
 //static char *font = "CodeliaLigatures Nerd Font:style=Regular:pixelsize=15:antialias=true:autohint=true";
 static char *font =  "ComicCodeLigaturesNerdFontComplete Nerd Font :pixelsize=14:antialias=true:autohint=true" ;
-static char *font2[] = { "Monocraft Nerd Font:pixelsize=14:antialias=true:autohint=true" };
+//static char *font2[] = { "Monocraft Nerd Font:pixelsize=14:antialias=true:autohint=true" };
 static int borderpx = 0;
+
+
+
+/*
+ * Open urls starting with urlprefixes, contatining urlchars
+ * by passing as ARG1 to urlhandler.
+ */
 
 /*
  * What program is execed by st depends of these precedence rules:
@@ -122,7 +129,7 @@ unsigned int tabspaces = 8;
 
 /* bg opacity */
 //float alpha = 1.0;
-float alpha = 0.7;
+float alpha = 0.9;
 
 /* Terminal colors (16 first used in escape sequence) */
 static const char *colorname[] = {
@@ -588,3 +595,10 @@ static char ascii_printable[] =
 " !\"#$%&'()*+,-./0123456789:;<=>?"
 "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
 "`abcdefghijklmnopqrstuvwxyz{|}~";
+
+char* urlhandler = "xdg-open";
+char urlchars[] =
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	"abcdefghijklmnopqrstuvwxyz"
+	"0123456789-._~:/?#@!$&'*+,;=%";
+char* urlprefixes[] = {"http://", "https://", NULL};
