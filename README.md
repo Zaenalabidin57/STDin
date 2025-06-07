@@ -59,6 +59,7 @@ Branch drawing symbols are supported with built-in glyphs. (app/plugin: [vim-flo
 - Hidecursor
 - Keyboard select
 - Ligatures
+- Nano shortcuts support
 - Netwmicon
 - Newterm
 - Openurlonclick
