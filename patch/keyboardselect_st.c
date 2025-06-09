@@ -1558,7 +1558,7 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 	Line line;
 	Rune u;
 
-	if (kbds_isurlmode() && !forcequit) {
+	if (kbds_isurlmode()) {
 		switch (ksym) {
 		case XK_Escape:
 			kbds_searchobj.len = 0;
@@ -1567,7 +1567,7 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 			kbds_clearhighlights();
 			/* If the direct search is aborted, we just go to the next switch
 			 * statement and exit the keyboard selection mode immediately */
-			if (kbds_searchobj.directsearch)
+			if (kbds_searchobj.directsearch || forcequit)
 				break;
 			return 0;
 		default:
@@ -1595,7 +1595,7 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 		}
 	}
 
-	if (kbds_isregexmode() && !forcequit) {
+	if (kbds_isregexmode()) {
 		switch (ksym) {
 		case XK_Escape:
 			kbds_searchobj.len = 0;
@@ -1604,7 +1604,7 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 			kbds_clearhighlights();
 			/* If the direct search is aborted, we just go to the next switch
 			 * statement and exit the keyboard selection mode immediately */
-			if (kbds_searchobj.directsearch)
+			if (kbds_searchobj.directsearch || forcequit)
 				break;
 			return 0;
 		default:
@@ -1632,7 +1632,7 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 		}
 	}
 
-	if (kbds_isflashmode() && !forcequit) {
+	if (kbds_isflashmode()) {
 		switch (ksym) {
 		case XK_Escape:
 			kbds_searchobj.len = 0;
@@ -1641,7 +1641,7 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 			kbds_clearhighlights();
 			/* If the direct search is aborted, we just go to the next switch
 			 * statement and exit the keyboard selection mode immediately */
-			if (kbds_searchobj.directsearch)
+			if (kbds_searchobj.directsearch || forcequit)
 				break;
 			return 0;
 		case XK_BackSpace:
