@@ -368,7 +368,7 @@ static unsigned int cursorblinktimeout = 800;
 /*
  * Default columns and rows numbers
  */
-static unsigned int cols = 80;
+static unsigned int cols = 94;
 static unsigned int rows = 24;
 
 /* Allow resizing the window to any pixel size: 0 = off, 1 = on */
