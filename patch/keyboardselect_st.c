@@ -1807,21 +1807,15 @@ kbds_keyboardhandler(KeySym ksym, char *buf, int len, int forcequit)
 		}
 		break;
 	case XK_v:
-		if (kbds_mode & KBDS_MODE_SELECT) {
-			selclear();
-			kbds_setmode(kbds_mode & ~(KBDS_MODE_SELECT | KBDS_MODE_LSELECT));
-		} else if (kbds_mode & KBDS_MODE_LSELECT) {
+		if (kbds_mode & KBDS_MODE_LSELECT) {
 			selextend(kbds_c.x, kbds_c.y, kbds_seltype, 0);
 			kbds_setmode((kbds_mode ^ KBDS_MODE_LSELECT) | KBDS_MODE_SELECT);
-		} else {
-			selstart(kbds_c.x, kbds_c.y, 0);
-			kbds_setmode(kbds_mode | KBDS_MODE_SELECT);
-		}
-		break;
-	case XK_S:
-		if (!(kbds_mode & KBDS_MODE_LSELECT)) {
+		} else if (kbds_mode & KBDS_MODE_SELECT) {
 			kbds_seltype ^= (SEL_REGULAR | SEL_RECTANGULAR);
 			selextend(kbds_c.x, kbds_c.y, kbds_seltype, 0);
+		}  else {
+			selstart(kbds_c.x, kbds_c.y, 0);
+			kbds_setmode(kbds_mode | KBDS_MODE_SELECT);
 		}
 		break;
 	case XK_p:
