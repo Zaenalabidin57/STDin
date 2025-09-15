@@ -2245,6 +2245,7 @@ csihandle(void)
 	case 'L': /* IL -- Insert <n> blank lines */
 		DEFAULT(csiescseq.arg[0], 1);
 		tinsertblankline(csiescseq.arg[0]);
+		tmoveto(0, term.c.y);
 		break;
 	case 'l': /* RM -- Reset Mode */
 		tsetmode(csiescseq.priv, 0, csiescseq.arg, csiescseq.narg);
@@ -2252,6 +2253,7 @@ csihandle(void)
 	case 'M': /* DL -- Delete <n> lines */
 		DEFAULT(csiescseq.arg[0], 1);
 		tdeleteline(csiescseq.arg[0]);
+		tmoveto(0, term.c.y);
 		break;
 	case 'X': /* ECH -- Erase <n> char */
 		if (csiescseq.arg[0] < 0)
