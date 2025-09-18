@@ -1640,6 +1640,7 @@ tdeletechar(int n)
 	if (regionselected(term.c.x, term.c.y+term.scr, term.col-1, term.c.y+term.scr))
 		selclear();
 	tclearregion(dst + size, term.c.y, term.col - 1, term.c.y, 1);
+	term.c.state &= ~CURSOR_WRAPNEXT;
 }
 
 void
@@ -1675,6 +1676,7 @@ tinsertblank(int n)
 		line[term.col-1].u = ' ';
 		line[term.col-1].mode &= ~ATTR_WIDE;
 	}
+	term.c.state &= ~CURSOR_WRAPNEXT;
 }
 
 void
@@ -1923,6 +1925,8 @@ tsetmode(int priv, int set, const int *args, int narg)
 				break;
 			case 7: /* DECAWM -- Auto wrap */
 				MODBIT(term.mode, set, MODE_WRAP);
+				if (!set)
+					term.c.state &= ~CURSOR_WRAPNEXT;
 				break;
 			case 0:  /* Error (IGNORED) */
 			case 2:  /* DECANM -- ANSI/VT52 (IGNORED) */
@@ -2152,13 +2156,16 @@ csihandle(void)
 			tclearregion(term.c.x, term.c.y, term.col-1, term.c.y, 1);
 			if (term.c.y < term.row-1)
 				tclearregion(0, term.c.y+1, term.col-1, term.row-1, 1);
+			term.c.state &= ~CURSOR_WRAPNEXT;
 			break;
 		case 1: /* above */
 			if (term.c.y >= 1)
 				tclearregion(0, 0, term.col-1, term.c.y-1, 1);
 			tclearregion(0, term.c.y, term.c.x, term.c.y, 1);
+			term.c.state &= ~CURSOR_WRAPNEXT;
 			break;
 		case 2: /* screen */
+			term.c.state &= ~CURSOR_WRAPNEXT;
 			if (IS_SET(MODE_ALTSCREEN)) {
 				tclearregion(0, 0, term.col-1, term.row-1, 1);
 				tdeleteimages();
@@ -2201,13 +2208,23 @@ csihandle(void)
 	case 'K': /* EL -- Clear line */
 		switch (csiescseq.arg[0]) {
 		case 0: /* right */
-			tclearregion(term.c.x, term.c.y, term.col-1, term.c.y, 1);
+			/* Workaround for GNU grep:
+			 * Sometimes grep emits EL when the cursor is in the wrap
+			 * state, which drops the last character of the line. To
+			 * prevent this from happening, we don't clear the line in
+			 * the wrap state. VTE terminals use the same solution.
+			 * https://bugzilla.gnome.org/show_bug.cgi?id=740789
+			 */
+			if (!(term.c.state & CURSOR_WRAPNEXT))
+				tclearregion(term.c.x, term.c.y, term.col - 1, term.c.y, 1);
 			break;
 		case 1: /* left */
 			tclearregion(0, term.c.y, term.c.x, term.c.y, 1);
+			term.c.state &= ~CURSOR_WRAPNEXT;
 			break;
 		case 2: /* all */
 			tclearregion(0, term.c.y, term.col-1, term.c.y, 1);
+			term.c.state &= ~CURSOR_WRAPNEXT;
 			break;
 		}
 		break;
@@ -2264,6 +2281,7 @@ csihandle(void)
 		DEFAULT(csiescseq.arg[0], 1);
 		x = MIN(term.c.x + csiescseq.arg[0], term.col) - 1;
 		tclearregion(term.c.x, term.c.y, x, term.c.y, 1);
+		term.c.state &= ~CURSOR_WRAPNEXT;
 		break;
 	case 'P': /* DCH -- Delete <n> char */
 		DEFAULT(csiescseq.arg[0], 1);
@@ -3170,6 +3188,7 @@ eschandle(uchar ascii)
 		} else {
 			tmoveto(term.c.x, term.c.y+1);
 		}
+		term.c.state &= ~CURSOR_WRAPNEXT;
 		break;
 	case 'E': /* NEL -- Next line */
 		tnewline(1); /* always go to first col */
@@ -3183,6 +3202,7 @@ eschandle(uchar ascii)
 		} else {
 			tmoveto(term.c.x, term.c.y-1);
 		}
+		term.c.state &= ~CURSOR_WRAPNEXT;
 		break;
 	case 'Z': /* DECID -- Identify Terminal */
 		write_da();
