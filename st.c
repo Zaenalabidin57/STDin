@@ -3036,7 +3036,7 @@ dcshandle(void)
 void
 initsixel(void)
 {
-	int bgcolor, transparent;
+	int bgcolor, par, transparent;
 	unsigned char r, g, b, a = 255;
 
 	/* If we are already in sixel mode, it means that we have not yet
@@ -3047,6 +3047,7 @@ initsixel(void)
 		term.mode &= ~MODE_SIXEL;
 	}
 
+	par = csiescseq.narg >= 1 ? csiescseq.arg[0] : 0;
 	transparent = (csiescseq.narg >= 2 && csiescseq.arg[1] == 1);
 	if (IS_TRUECOL(term.c.attr.bg)) {
 		r = term.c.attr.bg >> 16 & 255;
@@ -3058,7 +3059,7 @@ initsixel(void)
 			a = dc.col[defaultbg].pixel >> 24 & 255;
 	}
 	bgcolor = a << 24 | r << 16 | g << 8 | b;
-	if (sixel_parser_init(&sixel_st, transparent, bgcolor,
+	if (sixel_parser_init(&sixel_st, par, transparent, bgcolor,
 	                      IS_SET(MODE_SIXEL_PRIVATE_PALETTE)) != 0)
 		perror("sixel_parser_init() failed");
 	term.mode |= MODE_SIXEL;
