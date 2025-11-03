@@ -57,7 +57,7 @@ STLDFLAGS = $(LIBS) $(LDFLAGS)
 #MANPREFIX = ${PREFIX}/man
 
 # compiler and linker
-# CC = c99
+CC = tcc
 
 # flash mode support chinese pinyin
 FLASH_MODE_PINYIN = -D FLASH_MODE_PINYIN

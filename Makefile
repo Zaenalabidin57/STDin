@@ -33,7 +33,7 @@ st: $(OBJ)
 	$(CC) -o $@ $(OBJ) $(STLDFLAGS)
 
 clean:
-	rm -f st $(OBJ) $(PROJECT)*.tar.gz
+	rm -f st $(OBJ) $(PROJECT)*.tar.gz config.h
 
 dist: clean
 	mkdir -p $(DISTNAME)

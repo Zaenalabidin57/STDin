@@ -5,12 +5,10 @@
  *
  * font: see http://freedesktop.org/software/fontconfig/fontconfig-user.html
  */
-static char *font = "Liberation Mono:pixelsize=12:antialias=true:autohint=true";
+//static char *font = "CodeliaLigatures Nerd Font:style=Regular:pixelsize=14:antialias=true:autohint=true";
 /* Spare fonts */
-static char *font2[] = {
-/*	"Inconsolata for Powerline:pixelsize=12:antialias=true:autohint=true", */
-/*	"Hack Nerd Font Mono:pixelsize=11:antialias=true:autohint=true", */
-};
+static char *font =  "ComicCodeLigaturesNerdFontComplete Nerd Font :pixelsize=14:antialias=true:autohint=true" ;
+static char *font2[] = { "Noto Color Emoji:pixelsize=12:antialias=true:autohint=true" };
 
 /* pattern for regex mode,
  * use () sub-patterns to define the range to be copied*/
@@ -83,7 +81,7 @@ static uint url_opener_modkey = XK_ANY_MOD;
  * 4: value of shell in /etc/passwd
  * 5: value of shell in config.h
  */
-static char *shell = "/bin/sh";
+static char *shell = "/usr/bin/fish";
 char *utmp = NULL;
 /* scroll program: to enable use a string like "scroll" */
 char *scroll = NULL;
@@ -167,7 +165,7 @@ static unsigned int cursorthickness = 2;
 int hidecursor = 0;
 
 /* Ligatures. 0: off, 1: on */
-int ligatures = 0;
+int ligatures = 1;
 
 /*
  * Permanently disable ligatures so that they won't be compiled in. You also
@@ -260,39 +258,46 @@ unsigned int tabspaces = 8;
  * cause alpha to be used for both the focused and unfocused bg opacity.
  */
 float alpha = 0.93;
-float alphaUnfocused = 0.6;
+float alphaUnfocused = -1;
 
 /* Terminal colors (16 first used in escape sequence) */
 static const char *colorname[] = {
+
 	/* 8 normal colors */
-	"black",
-	"red3",
-	"green3",
-	"yellow3",
-	"blue2",
-	"magenta3",
-	"cyan3",
-	"gray90",
+	"#494D64",
+	"#ED8796",
+	"#A6DA95",
+	"#EED49F",
+	//"#8AADF4",
+	"#3D52E2",
+	"#F5BDE6",
+	"#8BD5CA",
+	"#B8C0E0",
 
 	/* 8 bright colors */
-	"gray50",
-	"red",
-	"green",
-	"yellow",
-	"#5c5cff",
-	"magenta",
-	"cyan",
-	"white",
+	"#5B6078",
+	"#ED8796",
+	"#A6DA95",
+	"#EED49F",
+	"#3D52E2",
 
+	//"#8AADF4",
+	"#F3BDEF",
+	"#8BD5CA",
+	"#A5ADCB",
+
+[256] = "#CAD3F5", /* default foreground colour */
+[257] = "#24273A", /* default background colour */
+[258] = "#F4DBD6", /*575268*/
 	[255] = 0,
 
 	/* more colors can be added after 255 to use with DefaultXX */
 	"#cccccc", /* 256 -> cursor */
 	"#555555", /* 257 -> rev cursor */
-	"gray90",  /* 258 -> foreground */
-	"black",   /* 259 -> background */
-	"black",   /* 260 -> background unfocused */
-	"gray90",  /* 261 -> visual bell */
+	"#CAD3F5",  /* 258 -> foreground */
+	"#0f0f0f",   /* 259 -> background */
+	"#24273A",   /* 260 -> background unfocused */
+	"#F3BDEF",  /* 261 -> visual bell */
 };
 
 /*
@@ -447,23 +452,23 @@ static Shortcut shortcuts[] = {
 	{ ControlMask,          XK_Print,       toggleprinter,   {.i =  0} },
 	{ ShiftMask,            XK_Print,       printscreen,     {.i =  0} },
 	{ XK_ANY_MOD,           XK_Print,       printsel,        {.i =  0} },
-	{ TERMMOD,              XK_Prior,       zoom,            {.f = +1} },
-	{ TERMMOD,              XK_Next,        zoom,            {.f = -1} },
+	{ MODKEY,              XK_comma,       zoom,            {.f = +1} },
+	{ MODKEY,              XK_period,        zoom,            {.f = -1} },
 	{ TERMMOD,              XK_Home,        zoomreset,       {.f =  0} },
 	{ TERMMOD,              XK_C,           clipcopy,        {.i =  0} },
 	{ TERMMOD,              XK_V,           clippaste,       {.i =  0} },
-	{ TERMMOD,              XK_O,           changealpha,     {.f = +0.05} },
-	{ TERMMOD,              XK_P,           changealpha,     {.f = -0.05} },
-	{ TERMMOD,              XK_L,           changealpha,     {.f = 0} },
+	{ MODKEY,              XK_q,           changealpha,     {.f = +0.05} },
+	{ MODKEY,              XK_a,           changealpha,     {.f = -0.05} },
+	{ MODKEY,              XK_m,           changealpha,     {.f = 0} },
 	//{ TERMMOD,              XK_,           changealphaunfocused, {.f = +0.05} },
 	//{ TERMMOD,              XK_,           changealphaunfocused, {.f = -0.05} },
 	//{ TERMMOD,              XK_,           changealphaunfocused, {.f = 0} },
-	{ ShiftMask,            XK_Page_Up,     kscrollup,       {.i = -1}, S_PRI },
-	{ ShiftMask,            XK_Page_Down,   kscrolldown,     {.i = -1}, S_PRI },
+	{ MODKEY,            XK_k,     kscrollup,       {.i = -1}, S_PRI },
+	{ MODKEY,            XK_j,   kscrolldown,     {.i = -1}, S_PRI },
 	{ TERMMOD,              XK_Y,           clippaste,       {.i =  0} },
 	{ ShiftMask,            XK_Insert,      clippaste,       {.i =  0} },
 	{ TERMMOD,              XK_Num_Lock,    numlock,         {.i =  0} },
-	{ TERMMOD,              XK_Return,      newterm,         {.i =  NEWTERM_FG_CWD} },
+	{ MODKEY|ShiftMask,              XK_T,      newterm,         {.i =  NEWTERM_FG_CWD} },
 	{ TERMMOD,              XK_space,       keyboard_select, { 0 } },
 	{ TERMMOD,              XK_F,           searchforward,   { 0 } },
 	{ TERMMOD,              XK_B,           searchbackward,  { 0 } },
@@ -475,6 +480,7 @@ static Shortcut shortcuts[] = {
 	{ XK_NO_MOD,            XK_F11,         fullscreen,      {.i =  0} },
 	{ MODKEY,               XK_Return,      fullscreen,      {.i =  0} },
 	{ MODKEY,               XK_o,           externalpipe,    {.v = copyoutput }, S_PRI },
+	{ ControlMask,          XK_U,           kscrollup,       {.i = -1}, S_PRI },
 };
 
 /*
@@ -620,6 +626,7 @@ static Key key[] = {
 	{ XK_Right,         XK_ANY_MOD,     "\033OC",        0,   +1},
 	{ XK_ISO_Left_Tab,  ShiftMask,      "\033[Z",        0,    0},
 	{ XK_Return,        Mod1Mask,       "\033\r",        0,    0},
+	{ XK_Return,        ShiftMask,      "\x1b\r",        0,    0},
 	{ XK_Return,        XK_ANY_MOD,     "\r",            0,    0},
 	{ XK_Insert,        ShiftMask,      "\033[4l",      -1,    0},
 	{ XK_Insert,        ShiftMask,      "\033[2;2~",    +1,    0},

@@ -102,6 +102,7 @@ static int evrow(XEvent *);
 static void expose(XEvent *);
 static void visibility(XEvent *);
 static void unmap(XEvent *);
+static void destroy(XEvent *);
 static void kpress(XEvent *);
 static void cmessage(XEvent *);
 static void resize(XEvent *);
@@ -124,6 +125,7 @@ static int match(uint, uint);
 
 static void run(void);
 static void usage(void);
+static int xerror(Display *dpy, XErrorEvent *ee);
 
 static void (*handler[LASTEvent])(XEvent *) = {
 	[KeyPress] = kpress,
@@ -131,6 +133,7 @@ static void (*handler[LASTEvent])(XEvent *) = {
 	[ConfigureNotify] = resize,
 	[VisibilityNotify] = visibility,
 	[UnmapNotify] = unmap,
+	[DestroyNotify] = destroy,
 	[Expose] = expose,
 	[FocusIn] = focus,
 	[FocusOut] = focus,
@@ -597,26 +600,30 @@ bpress(XEvent *e)
 void
 propnotify(XEvent *e)
 {
-	XPropertyEvent *xpev;
-	Atom clipboard = XInternAtom(xw.dpy, "CLIPBOARD", 0);
+    XPropertyEvent *xpev;
+    Atom clipboard = XInternAtom(xw.dpy, "CLIPBOARD", 0);
 
-	xpev = &e->xproperty;
-	if (xpev->state == PropertyNewValue &&
-			(xpev->atom == XA_PRIMARY ||
-			 xpev->atom == clipboard)) {
-		selnotify(e);
-	}
+    xpev = &e->xproperty;
+    /* Ignore property changes when window is not visible/unmapped to
+       avoid XGetWindowProperty on an invalid window. */
+    if (!(win.mode & MODE_VISIBLE))
+        return;
+    if (xpev->state == PropertyNewValue &&
+                (xpev->atom == XA_PRIMARY ||
+                 xpev->atom == clipboard)) {
+        selnotify(e);
+    }
 
 }
 
 void
 selnotify(XEvent *e)
 {
-	ulong nitems, ofs, rem;
-	int format;
-	uchar *data, *last, *repl;
-	Atom type, incratom, property = None;
-	int append = 0;
+    ulong nitems, ofs, rem;
+    int format;
+    uchar *data, *last, *repl;
+    Atom type, incratom, property = None;
+    int append = 0;
 
 	incratom = XInternAtom(xw.dpy, "INCR", 0);
 
@@ -626,8 +633,12 @@ selnotify(XEvent *e)
 	else if (e->type == PropertyNotify)
 		property = e->xproperty.atom;
 
-	if (property == None)
-		return;
+    if (property == None)
+        return;
+    /* If the window is not visible/unmapped, avoid selection retrieval,
+       which may call XGetWindowProperty on an invalid window. */
+    if (!(win.mode & MODE_VISIBLE))
+        return;
 
 	do {
 		if (XGetWindowProperty(xw.dpy, xw.win, property, ofs,
@@ -1441,6 +1452,10 @@ xinit(int cols, int rows)
 	xw.netwmiconname = XInternAtom(xw.dpy, "_NET_WM_ICON_NAME", False);
 	XSetWMProtocols(xw.dpy, xw.win, &xw.wmdeletewin, 1);
 
+	/* Install error handler to avoid aborting on BadWindow after embed
+	   parents die (e.g., tabbed killed). */
+	XSetErrorHandler(xerror);
+
 	/* use a png-image to set _NET_WM_ICON */
 	FILE* file = fopen(ICON, "r");
 	if (file) {
@@ -1497,7 +1512,19 @@ xinit(int cols, int rows)
 	if (xsel.xtarget == None)
 		xsel.xtarget = XA_STRING;
 
-	boxdraw_xinit(xw.dpy, xw.cmap, xw.draw, xw.vis);
+boxdraw_xinit(xw.dpy, xw.cmap, xw.draw, xw.vis);
+}
+
+int
+xerror(Display *dpy, XErrorEvent *ee)
+{
+    /* Ignore BadWindow and BadDrawable errors commonly triggered when
+       the embedded parent is killed and the window is destroyed while
+       events are still pending (e.g., X_GetProperty on destroyed win). */
+    if (ee->error_code == BadWindow || ee->error_code == BadDrawable)
+        return 0;
+    /* Default: do not abort; swallow other errors as non-fatal. */
+    return 0;
 }
 
 #if !DISABLE_LIGATURES
@@ -2656,7 +2683,20 @@ visibility(XEvent *ev)
 void
 unmap(XEvent *ev)
 {
-	win.mode &= ~MODE_VISIBLE;
+    win.mode &= ~MODE_VISIBLE;
+    /* Disable PropertyChangeMask to avoid selection/property processing
+       after unmap, which can trigger BadWindow if the window is destroyed. */
+    MODBIT(xw.attrs.event_mask, 0, PropertyChangeMask);
+    XChangeWindowAttributes(xw.dpy, xw.win, CWEventMask, &xw.attrs);
+}
+
+void
+destroy(XEvent *ev)
+{
+    /* Make sure we don't process properties after the window is destroyed */
+    win.mode &= ~MODE_VISIBLE;
+    MODBIT(xw.attrs.event_mask, 0, PropertyChangeMask);
+    XChangeWindowAttributes(xw.dpy, xw.win, CWEventMask, &xw.attrs);
 }
 
 void
@@ -2933,10 +2973,15 @@ cmessage(XEvent *e)
 		} else if (e->xclient.data.l[1] == XEMBED_FOCUS_OUT) {
 			win.mode &= ~MODE_FOCUSED;
 		}
-	} else if (e->xclient.data.l[0] == xw.wmdeletewin) {
-		ttyhangup();
-		exit(0);
-	}
+    } else if (e->xclient.data.l[0] == xw.wmdeletewin) {
+        /* Window manager requested close; mark as not visible and
+           avoid further property processing before exit. */
+        win.mode &= ~MODE_VISIBLE;
+        MODBIT(xw.attrs.event_mask, 0, PropertyChangeMask);
+        XChangeWindowAttributes(xw.dpy, xw.win, CWEventMask, &xw.attrs);
+        ttyhangup();
+        exit(0);
+    }
 }
 
 void
@@ -3016,6 +3061,23 @@ run(void)
 			ttyread();
 
 		xev = 0;
+		/* Pre-handle Unmap/Destroy to prevent property/selection processing
+		   on invalid windows that may cause BadWindow errors. */
+		while (1) {
+			XEvent uev;
+			if (!XCheckTypedEvent(xw.dpy, UnmapNotify, &uev))
+				break;
+			unmap(&uev);
+		}
+		while (1) {
+			XEvent dev;
+			if (!XCheckTypedEvent(xw.dpy, DestroyNotify, &dev))
+				break;
+			destroy(&dev);
+			/* terminate cleanly once the window is destroyed */
+			ttyhangup();
+			exit(0);
+		}
 		while (XPending(xw.dpy)) {
 			XNextEvent(xw.dpy, &ev);
 			if (!xev || xev == SelectionRequest)
